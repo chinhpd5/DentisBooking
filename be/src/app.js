@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import path from 'path';
 import dotenv from 'dotenv';
+import routers from "./routers";
 
 dotenv.config();
 
@@ -19,6 +20,8 @@ app.use(express.static(path.join(__dirname,'uploads')));
 app.get('/',(request, response)=>{
   return response.send("Hello world")
 })
+
+app.use("/api", routers);
 
 const port = process.env.PORT || 3000
 app.listen(port, () => {

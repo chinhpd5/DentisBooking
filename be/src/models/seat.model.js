@@ -10,8 +10,9 @@ const seatSchema = new mongoose.Schema(
       trim: true,
     },
     location: {
-      type: Number,
-      required: [true, "Vị trí ghế là bắt buộc"],
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Location",
+      required: false
     },
     status: {
       type: Number,

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import User from '../models/user.model';
-import dotenv from 'dotenv'
+import dotenv from 'dotenv';
+import { USER_ROLE } from '../utils/constants.js';
 dotenv.config();
 
 export const checkAuth = (req,res,next) =>{
@@ -18,7 +19,7 @@ export const checkAuth = (req,res,next) =>{
     if(err){
       return res.status(401).json({message: "Sai token hoặc hết hạn"})
     }
-    req.userId = decode.id;
+    req.user = decode;
   })
 
   next()
@@ -28,7 +29,7 @@ export const checkPermission = (...roles) =>{
   return async (req,res,next) => {
     try {
       const user = await User.findById(req.userId);
-      console.log(user);
+      
       if(!user){
         return res.status(403).json({message: "Không tìm thấy user"})
       }
@@ -44,4 +45,25 @@ export const checkPermission = (...roles) =>{
     }
     
   }
+}
+
+export const checkAdmin = (req,res,next) => {
+  if(req.user.role !== USER_ROLE.ADMIN){
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này"})
+  }
+  next();
+}
+
+export const checkStaff = (req,res,next) => {
+  if(req.user.role !== USER_ROLE.STAFF){
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này"})
+  }
+  next();
+}
+
+export const checkAdminStaff = (req,res,next) => {
+  if(!(req.user.role === USER_ROLE.ADMIN || req.user.role === USER_ROLE.STAFF)){
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này"})
+  }
+  next();
 }

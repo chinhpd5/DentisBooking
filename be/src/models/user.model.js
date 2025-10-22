@@ -12,7 +12,6 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    // match:[/^\S+@\S+\.\S+$/ , "Sai định dạng email"]
   },
   password: {
     type: String,
@@ -25,10 +24,10 @@ const userSchema = new mongoose.Schema({
     enum: Object.values(USER_ROLE),
     default: USER_ROLE.STAFF,
   },
-  active: {
+  status: {
     type: Number,
     enum: Object.values(USER_STATUS),
-    default: TRICK_STATUS.ACTIVE,
+    default: USER_STATUS.ACTIVE,
   },
   staffId: {
     type: mongoose.Schema.Types.ObjectId,
