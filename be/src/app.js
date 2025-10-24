@@ -2,10 +2,14 @@ import express from "express";
 import mongoose from "mongoose";
 import path from 'path';
 import dotenv from 'dotenv';
+import routers from "./routers";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
+
+app.use(cors())
 
 // kết nối cơ sở dữ liệu
 mongoose.connect(process.env.CONNECT_MONGODB_URL)
@@ -19,6 +23,8 @@ app.use(express.static(path.join(__dirname,'uploads')));
 app.get('/',(request, response)=>{
   return response.send("Hello world")
 })
+
+app.use("/api", routers);
 
 const port = process.env.PORT || 3000
 app.listen(port, () => {
