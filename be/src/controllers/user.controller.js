@@ -47,7 +47,6 @@ export const register = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
-
     const user = await User.findOne({
       username,
       isDeleted: IS_DELETED.NO,
@@ -60,7 +59,7 @@ export const login = async (req, res) => {
       });
     }
 
-    if (user.active !== USER_STATUS.ACTIVE) {
+    if (user.status != USER_STATUS.ACTIVE) {
       return res.status(403).json({
         success: false,
         message: "Tài khoản đã bị khóa hoặc chưa kích hoạt",
@@ -78,7 +77,7 @@ export const login = async (req, res) => {
     const accessToken = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: "3h" }
+      { expiresIn: "12h" }
     );
 
     // const refreshToken = jwt.sign(
@@ -100,6 +99,8 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
+    console.log(error);
+    
     res.status(500).json({
       success: false,
       message: "Lỗi khi đăng nhập",

@@ -4,10 +4,10 @@ import {
   getAllSeats,
   getSeatById,
   updateSeat,
-  deleteSeat,
+  hardDeleteSeat,
   updateSeatStatus
 } from "../controllers/seat.controller";
-import { validateRequest } from "../middlewares/validateRequest.middleware";
+import { validateRequest } from "../middlewares/validateRequest";
 import {
   createSeatSchema,
   updateSeatSchema
@@ -21,7 +21,7 @@ router.post("/", validateRequest(createSeatSchema), createSeat);
 router.get("/", getAllSeats);
 router.get("/:id", getSeatById);
 router.put("/:id", validateRequest(updateSeatSchema), updateSeat);
-router.delete("/:id", deleteSeat);
+router.delete("/:id", hardDeleteSeat);
 router.patch("/:id/status", updateSeatStatus);
 
 export default router;

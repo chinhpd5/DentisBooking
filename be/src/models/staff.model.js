@@ -2,6 +2,21 @@ import mongoose from "mongoose";
 import mongoosePaginate from "mongoose-paginate-v2";
 import { USER_ROLE, STAFF_STATUS, IS_DELETED } from "../utils/constants";
 
+const shiftSchema = new mongoose.Schema({
+  start: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 1439 // tối đa 23:59
+  },
+  end: {
+    type: Number,
+    required: true,
+    min: 0,
+    max: 1439
+  }
+}, { _id: false });
+
 const staffSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -20,34 +35,33 @@ const staffSchema = new mongoose.Schema({
   email: {
     type: String,
   },
-  // scheduleStart: {
-  //   type: String,
-  //   required: [true, "Giờ bắt đầu ca làm việc là bắt buộc"],
-  //   match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Định dạng giờ không hợp lệ (HH:MM)"]
-  // },
-  scheduleStart: {
-    type: Number,
-    required: [true, "Giờ bắt đầu ca làm việc là bắt buộc"],
-    min: 0,
-    max: 1439 // 23:59 = 1439 phút
+  scheduleMonday: {
+    type: [shiftSchema],
+    default: []
   },
-  scheduleEnd: {
-    type: Number,
-    required: [true, "Giờ kết thúc ca làm việc là bắt buộc"],
-    min: 0,
-    max: 1439 // 23:59 = 1439 phút
+  scheduleTuesday: {
+    type: [shiftSchema],
+    default: []
   },
-  scheduleWeekendStart: {
-    type: Number,
-    required: [true, "Giờ bắt đầu ca làm việc cuối tuần là bắt buộc"],
-    min: 0,
-    max: 1439
+  scheduleWednesday: {
+    type: [shiftSchema],
+    default: []
   },
-  scheduleWeekendEnd: {
-    type: Number,
-    required: [true, "Giờ Kết thúc ca làm việc cuối tuần là bắt buộc"],
-    min: 0,
-    max: 1439
+  scheduleThursday: {
+    type: [shiftSchema],
+    default: []
+  },
+  scheduleFriday: {
+    type: [shiftSchema],
+    default: []
+  },
+  scheduleSaturday: {
+    type: [shiftSchema],
+    default: []
+  },
+  scheduleSunday: {
+    type: [shiftSchema],
+    default: []
   },
   status: {
     type: Number,

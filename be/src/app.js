@@ -3,10 +3,13 @@ import mongoose from "mongoose";
 import path from 'path';
 import dotenv from 'dotenv';
 import routers from "./routers";
+import cors from "cors";
 
 dotenv.config();
 
 const app = express();
+
+app.use(cors())
 
 // kết nối cơ sở dữ liệu
 mongoose.connect(process.env.CONNECT_MONGODB_URL)

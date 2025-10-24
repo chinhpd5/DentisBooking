@@ -1,6 +1,25 @@
 import { USER_ROLE, STAFF_STATUS } from "../utils/constants";
 import Joi from "joi";
 
+const shiftSchema = Joi.object({
+  start: Joi.number()
+    .min(0)
+    .max(1439)
+    .messages({
+      "number.base": "Giờ bắt đầu phải là số",
+      "number.min": "Giờ bắt đầu tối thiểu là 0 phút (00:00)",
+      "number.max": "Giờ bắt đầu tối đa là 1439 phút (23:59)",
+    }),
+  end: Joi.number()
+    .min(0)
+    .max(1439)
+    .messages({
+      "number.base": "Giờ kết thúc phải là số",
+      "number.min": "Giờ kết thúc tối thiểu là 0 phút (00:00)",
+      "number.max": "Giờ kết thúc tối đa là 1439 phút (23:59)",
+    })
+});
+
 export const createStaffSchema = Joi.object({
   name: Joi.string().required().min(1).max(2000).messages({
     "string.base": "Tên Nhân viên cần kiểu chuỗi",
@@ -24,29 +43,40 @@ export const createStaffSchema = Joi.object({
     "string.base": "Vai trò cần có kiểu dữ liệu chuỗi",
     "any.only": `Chỉ cho phép các giá trị ${Object.values(USER_ROLE).join(", ")}`
   }),
-  scheduleStart: Joi.number().required().min(0).max(1439).messages({
-    "number.base": "Giờ vào làm ngày thường chưa thỏa mãn",
-    "any.required": "Giờ vào làm ngày thường là bắt buộc",
-    "number.min": "Giờ vào làm ngày thường tối thiểu từ 0h00p",
-    "number.max": "Giờ vào làm ngày thường tối đa từ 23h59p"
+  scheduleMonday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleMonday phải là một mảng các ca làm việc",
   }),
-  scheduleEnd: Joi.number().required().min(0).max(1439).messages({
-    "number.base": "Giờ ra về ngày thường chưa thỏa mãn",
-    "any.required": "Giờ ra về ngày thường là bắt buộc",
-    "number.min": "Giờ ra về ngày thường tối thiểu từ 0h00p",
-    "number.max": "Giờ ra về ngày thường tối đa từ 23h59p"
+  scheduleTuesday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleTuesday phải là một mảng các ca làm việc",
   }),
-  scheduleWeekendStart: Joi.number().required().min(0).max(1439).messages({
-    "number.base": "Giờ vào làm ngày cuối tuần chưa thỏa mãn",
-    "any.required": "Giờ vào làm ngày cuối tuần là bắt buộc",
-    "number.min": "Giờ vào làm ngày cuối tuần tối thiểu từ 0h00p",
-    "number.max": "Giờ vào làm ngày cuối tuần tối đa từ 23h59p"
+  scheduleWednesday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleWednesday phải là một mảng các ca làm việc",
   }),
-  scheduleWeekendEnd: Joi.number().required().min(0).max(1439).messages({
-    "number.base": "Giờ ra về ngày cuối tuần chưa thỏa mãn",
-    "any.required": "Giờ ra về ngày cuối tuần là bắt buộc",
-    "number.min": "Giờ ra về ngày cuối tuần tối thiểu từ 0h00p",
-    "number.max": "Giờ ra về ngày cuối tuần tối đa từ 23h59p"
+  scheduleThursday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleThursday phải là một mảng các ca làm việc",
+  }),
+  scheduleFriday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleFriday phải là một mảng các ca làm việc",
+  }),
+  scheduleSaturday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleSaturday phải là một mảng các ca làm việc",
+  }),
+  scheduleSunday: Joi.array()
+  .items(shiftSchema)
+  .messages({
+    "array.base": "scheduleSunday phải là một mảng các ca làm việc",
   }),
   status: Joi.string().valid(...Object.values(STAFF_STATUS)).messages({
     "string.base": "Trạng thái cần có kiểu dữ liệu chuỗi",
@@ -55,6 +85,6 @@ export const createStaffSchema = Joi.object({
 })
 
 export const updateStaffSchema = createStaffSchema.fork(
-  ["name","scheduleStart","scheduleEnd","scheduleWeekendStart","scheduleWeekendEnd"],
+  ["name","scheduleMonday","scheduleTuesday","scheduleWednesday","scheduleThursday","scheduleFriday","scheduleSaturday","scheduleSunday"],
   (schema) => schema.optional()
 )

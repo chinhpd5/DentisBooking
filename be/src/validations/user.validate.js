@@ -1,7 +1,7 @@
 import Joi from 'joi'
 import { USER_ROLE, USER_STATUS } from '../utils/constants'
 
-export const registerSchema = {
+export const registerSchema = Joi.object({
   username: Joi.string().alphanum().min(3).max(30).required().messages({
     "string.base": "Tên đăng nhập cần kiểu chuỗi",
     "string.alphanum": "Tên đăng nhập chỉ được chứa chữ và số",
@@ -28,9 +28,9 @@ export const registerSchema = {
   status: Joi.string().valid(...Object.values(USER_STATUS)).messages({
     "any.only": `Trạng thái phải là ${Object.values(USER_STATUS).join(" hoặc ")}`,
   })
-};
+});
 
-export const loginSchema = {
+export const loginSchema = Joi.object({
   username: Joi.string().required().messages({
     "any.required": "Tên đăng nhập là bắt buộc",
   }),
@@ -38,9 +38,9 @@ export const loginSchema = {
     "any.required": "Mật khẩu là bắt buộc",
     "string.min": "Mật khẩu cần ít nhất {#limit} ký tự",
   }),
-};
+});
 
-export const changePasswordSchema = {
+export const changePasswordSchema = Joi.object({
   oldPassword: Joi.string().required().messages({
     "any.required": "Mật khẩu cũ là bắt buộc",
   }),
@@ -48,9 +48,9 @@ export const changePasswordSchema = {
     "any.required": "Mật khẩu mới là bắt buộc",
     "string.min": "Mật khẩu mới cần ít nhất {#limit} ký tự",
   }),
-};
-export const resetPasswordSchema = {
+});
+export const resetPasswordSchema = Joi.object({
   id: Joi.string().required().messages({
     "any.required": "ID người dùng là bắt buộc",
   })
-};
+});

@@ -7,12 +7,12 @@ import {
   deleteCustomer,
   getCustomerByPhone
 } from "../controllers/customer.controller";
-import { validateRequest } from "../middlewares/validateRequest.middleware";
+import { validateRequest } from "../middlewares/validateRequest";
 import {
   createCustomerSchema,
   updateCustomerSchema
 } from "../validations/customer.validate";
-import { checkAuth, checkAdminStaff } from "../middlewares/checkAuth";
+import { checkAuth } from "../middlewares/checkAuth";
 
 const router = express.Router();
 

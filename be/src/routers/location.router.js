@@ -6,12 +6,12 @@ import {
   updateLocation,
   deleteLocation
 } from "../controllers/location.controller";
-import { validateRequest } from "../middlewares/validateRequest.middleware";
+import { validateRequest } from "../middlewares/validateRequest";
 import {
   createLocationSchema,
   updateLocationSchema
 } from "../validations/location.validate";
-import { checkAuth } from "../middlewares/checkAuth";
+import { checkAuth,checkAdminStaff } from "../middlewares/checkAuth";
 
 const router = express.Router();
 

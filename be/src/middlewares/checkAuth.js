@@ -15,7 +15,7 @@ export const checkAuth = (req,res,next) =>{
     return res.status(401).json({message: "Thiếu token"})
   }
 
-  jwt.verify(token,process.env.KEY_SECRET,(err,decode) => {
+  jwt.verify(token,process.env.JWT_SECRET,(err,decode) => {
     if(err){
       return res.status(401).json({message: "Sai token hoặc hết hạn"})
     }
