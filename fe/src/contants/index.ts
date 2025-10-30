@@ -1,7 +1,7 @@
 
 export enum USER_STATUS {
-  ACTIVE = 1,
-  INACTIVE = 0
+  DISABLED = 0,
+  ACTIVE = 1
 }
 
 export enum IS_DELETED {
@@ -20,4 +20,21 @@ export enum USER_ROLE {
 export enum STAFF_STATUS {
   DISABLED= 0,
   ACTIVE= 1
+}
+
+export enum SEAT_STATUS {
+  DISABLED = 0,
+  AVAILABLE = 1,
+  USING = 2,
+  REPAIR = 3,
+}
+
+export enum JOB_STATUS {
+  DISABLED = 0,
+  ACTIVE = 1
+}
+
+export enum TRICK_STATUS {
+  DISABLED = 0,
+  ACTIVE = 1
 }

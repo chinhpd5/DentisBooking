@@ -25,9 +25,22 @@ export const createCustomerSchema = Joi.object({
     "string.min": "Địa chỉ cần ít nhất {#limit} ký tự",
     "string.max": "Địa chỉ tối đa {#limit} ký tự",
   }),
+
+  dateOfBirth: Joi.date().optional().messages({
+    "date.base": "Ngày sinh phải là ngày hợp lệ",
+  }),
+
+  gender: Joi.string().valid("male", "female", "other").optional().messages({
+    "any.only": "Giới tính phải là một trong: male, female, other",
+  }),
+
+  note: Joi.string().max(500).allow("").optional().messages({
+    "string.base": "Ghi chú phải là chuỗi",
+    "string.max": "Ghi chú tối đa {#limit} ký tự",
+  }),
 });
 
 export const updateCustomerSchema = createCustomerSchema.fork(
-  ["name", "phone", "address"],
+  ["name", "phone", "address", "dateOfBirth", "gender", "note"],
   (schema) => schema.optional()
 );

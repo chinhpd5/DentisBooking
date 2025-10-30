@@ -1,5 +1,5 @@
 import Staff from '../models/staff.model'; 
-import { IS_DELETED, STAFF_STATUS  } from  "../utils/constants" 
+import { IS_DELETED, STAFF_STATUS,USER_ROLE  } from  "../utils/constants" 
 
 export const createEmployee = async (req, res) => {
   try {
@@ -56,6 +56,25 @@ export const getAllEmployees = async (req, res) => {
       currentPage: result.page,
       limit: result.limit,
       data: result.docs,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách nhân viên",
+      error: error.message,
+    });
+  }
+};
+
+export const getAllStaff = async (req, res) => {
+  try {
+    const { role } = req.query;
+    const query = { isDeleted: IS_DELETED.NO };
+    if (role) query.role = role;
+    const staff = await Staff.find(query);
+    res.status(200).json({
+      success: true,
+      data: staff,
     });
   } catch (error) {
     res.status(500).json({
@@ -203,3 +222,4 @@ export const updateEmployeeStatus = async (req, res) => {
     });
   }
 };
+

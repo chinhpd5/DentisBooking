@@ -6,6 +6,7 @@ import {addStaff} from "../../services/staff";
 import Toast from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 import { CreateStaff } from "../../types/staff";
+import { STAFF_STATUS } from "../../contants";
 
 const tailLayout = {
   wrapperCol: { offset: 8, span: 16 },
@@ -27,8 +28,9 @@ function StaffAdd() {
       form.resetFields();
       navigate('/staff')
     },
-    onError: (error: any) => {
-      Toast.error("Thêm mới nhân viên thất bại: " + error.data.message);
+    onError: (err: unknown) => {
+      const error = err as { response?: { data?: { message?: string } } };
+      Toast.error("Thêm tài khoản thất bại: " + error.response?.data?.message);
     }
   });
 
@@ -50,8 +52,10 @@ function StaffAdd() {
           <Form
             form={form}
             name="control-hooks"
+            initialValues={{
+              status: STAFF_STATUS.ACTIVE
+            }}
             onFinish={onFinish}
-            
           >
             <Row gutter={24}>
               <Col span={12}>
@@ -107,6 +111,13 @@ function StaffAdd() {
                   },
                 ]}>
                   <Input />
+                </Form.Item>
+                <Form.Item layout="vertical" name="status" initialValue={STAFF_STATUS.ACTIVE} label="Trạng thái:" rules={[
+                  { required: true, message: "Vui lòng chọn trạng thái" }]}>
+                  <Select placeholder="Chọn trạng thái">
+                    <Option value={STAFF_STATUS.ACTIVE} key={STAFF_STATUS.ACTIVE} selected>Đang làm</Option>
+                    <Option value={STAFF_STATUS.DISABLED} key={STAFF_STATUS.DISABLED}>Đã nghỉ</Option>
+                  </Select>
                 </Form.Item>
               </Col>
             </Row>

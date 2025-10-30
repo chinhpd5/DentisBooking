@@ -8,7 +8,8 @@ import {
   updateUser,
   updateUserStatus,
   changePassword,
-  resetPassword
+  resetPassword,
+  
 } from "../controllers/user.controller";
 import {checkAdmin, checkAuth } from "../middlewares/checkAuth";
 import { validateRequest } from "../middlewares/validateRequest";
@@ -30,6 +31,7 @@ router.delete("/:id",deleteUser);
 router.put("/:id",updateUser);
 router.get("/:id/status",updateUserStatus);
 router.post("/reset-password",validateRequest(resetPasswordSchema),resetPassword);
+
 
 
 

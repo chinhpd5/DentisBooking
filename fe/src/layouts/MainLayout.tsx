@@ -8,7 +8,10 @@ import {
   ScissorOutlined,
   TeamOutlined,
   UnorderedListOutlined,
+  UserAddOutlined,
   UsergroupAddOutlined,
+  UserOutlined,
+  UserSwitchOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Button, Menu, Popconfirm } from "antd";
@@ -67,7 +70,8 @@ const items: MenuItem[] = [
     icon: <InsertRowBelowOutlined />,
     children: [
       {key: "seat-list", label: "Danh sách Ghế", icon: <UnorderedListOutlined />},
-      {key: "seat-add", label: "Thêm mới Ghế", icon: <PlusOutlined />}
+      {key: "seat-add", label: "Thêm mới Ghế", icon: <PlusOutlined />},
+      {key: "location-list", label: "Quản lý tầng", icon: <UnorderedListOutlined />},
     ]
   },
   {
@@ -77,6 +81,15 @@ const items: MenuItem[] = [
     children: [
       {key: "user-list", label: "Danh sách Tài khoản", icon: <UnorderedListOutlined />},
       {key: "user-add", label: "Thêm mới Tài khoản", icon: <PlusOutlined />}
+    ]
+  },
+  {
+    key: "Customer",
+    label: "Quản lý Khách hàng",
+    icon: <UserSwitchOutlined />,
+    children: [
+      {key: "customer-list", label: "Danh sách Khách hàng", icon: <UserOutlined />},
+      {key: "customer-add", label: "Thêm mới Khách hàng", icon: <UserAddOutlined />}
     ]
   },
 ];
@@ -99,7 +112,34 @@ function MainLayout() {
         case 'staff-add':
           naviagte('/staff/add');
           break;
-      }
+        case 'job-list':
+          naviagte('/job')
+          break;
+        case 'job-add':
+          naviagte('/job/add')
+          break;
+        case 'trick-list':
+          naviagte('/trick')
+          break;
+        case 'trick-add':
+          naviagte('/trick/add')
+          break;
+        case 'location-list':
+          naviagte('/location')
+          break;
+        case 'seat-list':
+          naviagte('/seat')
+          break;
+        case 'seat-add':
+          naviagte('/seat/add')
+          break;
+          case 'customer-list':
+            naviagte('/customer')
+            break;
+          case 'customer-add':
+            naviagte('/customer/add')
+            break;
+    }
     }else{
       naviagte('not-found')
     }

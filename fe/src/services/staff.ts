@@ -29,3 +29,11 @@ export const updateStaff = (id: string, data: CreateStaff) => {
 export const deleteStaff = (id: string) => {
   return axiosInstance.delete(`/staff/${id}`);
 }
+
+export const getAllStaff = async (role: string | undefined) => {
+  let api = "/staff/all";
+  if(role)
+    api+=`?role=${role}`;
+  const {data} = await axiosInstance.get(api);
+  return data.data;
+}

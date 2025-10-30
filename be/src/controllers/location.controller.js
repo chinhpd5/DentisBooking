@@ -1,4 +1,7 @@
 import Location from "../models/location.model";
+import Seat from "../models/seat.model";
+import { IS_DELETED } from "../utils/constants";
+
 export const createLocation = async (req, res) => {
   try {
     const data = req.body;
@@ -85,6 +88,20 @@ export const updateLocation = async (req, res) => {
 export const deleteLocation = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Kiểm tra xem có seat nào đang sử dụng location này không
+    const seatsUsingLocation = await Seat.findOne({
+      locationId: id,
+      isDeleted: IS_DELETED.NO,
+    });
+
+    if (seatsUsingLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể xóa tầng này. Đang có ghế đang sử dụng tầng này.",
+      });
+    }
+
     const deletedLocation = await Location.findByIdAndDelete(id);
     if (!deletedLocation) {
       return res.status(404).json({

@@ -32,7 +32,7 @@ export const getAllSeats = async (req, res) => {
     const query = { isDeleted: IS_DELETED.NO };
 
     if (status) query.status = status;
-    if (location) query.location = location;
+    if (location) query.locationId = location;
 
     if (search) {
       query.$or = [
@@ -44,7 +44,13 @@ export const getAllSeats = async (req, res) => {
       page: parseInt(page),
       limit: parseInt(limit),
       sort: { createdAt: -1 },
+      populate: [
+        {
+          path: "locationId"
+        }
+      ],
     };
+
 
     const result = await Seat.paginate(query, options);
 
@@ -67,7 +73,7 @@ export const getAllSeats = async (req, res) => {
 
 export const getSeatById = async (req, res) => {
   try {
-    const seat = await Seat.findById(req.params.id);
+    const seat = await Seat.findById(req.params.id).populate('locationId');
     if (!seat) {
       return res.status(404).json({
         success: false,

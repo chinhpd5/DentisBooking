@@ -1,7 +1,6 @@
 
 export const validateRequest = (schema,target= 'body') => {
   return (req, res, next) => {
-    console.log(schema);
     
     const {error,value} = schema.validate(req[target],{
       abortEarly: false, // thông báo tất cả các lỗi nếu có

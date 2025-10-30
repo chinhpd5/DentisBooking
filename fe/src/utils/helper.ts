@@ -1,4 +1,4 @@
-import { USER_ROLE } from "../contants";
+import { SEAT_STATUS, USER_ROLE } from "../contants";
 
 export const convertNameRoleArray = () => {
   const arrayRole: string[] = Object.values(USER_ROLE);
@@ -30,4 +30,64 @@ export const convertNameRole = (role: string) =>{
       return "Không xác định"
   }
 }
+
+export const getStatusText = (status: SEAT_STATUS) => {
+  switch (status) {
+    case SEAT_STATUS.AVAILABLE:
+      return "Sẵn sàng";
+    case SEAT_STATUS.USING:
+      return "Đang sử dụng";
+    case SEAT_STATUS.REPAIR:
+      return "Đang sửa chữa";
+    case SEAT_STATUS.DISABLED:
+      return "Vô hiệu";
+    default:
+      return "Không xác định";
+  }
+};
+
+export const getStatusColor = (status: SEAT_STATUS) => {
+  switch (status) {
+    case SEAT_STATUS.AVAILABLE:
+      return "green";
+    case SEAT_STATUS.USING:
+      return "blue";
+    case SEAT_STATUS.REPAIR:
+      return "orange";
+    case SEAT_STATUS.DISABLED:
+      return "red";
+    default:
+      return "default";
+  }
+};
+
+export const getStatusBgColor = (status: SEAT_STATUS) => {
+  switch (status) {
+    case SEAT_STATUS.AVAILABLE:
+      return "#f6ffed";
+    case SEAT_STATUS.USING:
+      return "#e6f7ff";
+    case SEAT_STATUS.REPAIR:
+      return "#fff7e6";
+    case SEAT_STATUS.DISABLED:
+      return "#fff1f0";
+    default:
+      return "#fafafa";
+  }
+};
+
+export const getStatusBorderColor = (status: SEAT_STATUS) => {
+  switch (status) {
+    case SEAT_STATUS.AVAILABLE:
+      return "#b7eb8f";
+    case SEAT_STATUS.USING:
+      return "#91d5ff";
+    case SEAT_STATUS.REPAIR:
+      return "#ffd591";
+    case SEAT_STATUS.DISABLED:
+      return "#ffccc7";
+    default:
+      return "#d9d9d9";
+  }
+};
 

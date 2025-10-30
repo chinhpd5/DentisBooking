@@ -12,12 +12,14 @@ const trickSchema = new mongoose.Schema({
     type: Number,
     required: [true, "Thời gian thực hiện trò chơi là bắt buộc"],
   },
-  // staffIds:[
-  //   {
-  //     type: mongoose.Schema.Types.ObjectId,
-  //     ref: "Staff"
-  //   }
-  // ],
+  staffIds:
+  {
+    type: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Staff",
+    }],
+    default: [],
+  },
   jobIds: {
     type: [{
       type: mongoose.Schema.Types.ObjectId,

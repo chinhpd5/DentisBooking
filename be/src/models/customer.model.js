@@ -14,7 +14,20 @@ const customerSchema = new mongoose.Schema({
   address: {
     type: String,
     required: [true, "Địa chỉ khách hàng là bắt buộc"],
-  }
+  },
+  dateOfBirth: {
+    type: Date,
+  },
+  gender: {
+    type: String,
+    enum: ["male", "female","other"],
+    default: "other",
+  },
+  note: {
+    type: String,
+    default: "",
+    trim: true,
+  },
 }, {
   timestamps: true,
   versionKey: false,

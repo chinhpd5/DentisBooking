@@ -27,24 +27,24 @@ axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  (error: AxiosError<any>) => {
+  (error: AxiosError<{ message?: string }>) => {
     const status = error.response?.status;
     const message = error.response?.data?.message || "Đã xảy ra lỗi";
 
     switch (status) {
       case 400:
-        toast.error(message || "Dữ liệu không hợp lệ");
+        toast.error(error.response?.data?.message  || "Dữ liệu không hợp lệ");
         break;
 
       case 401:
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         localStorage.removeItem("tokenDentis");
         window.location.href = "/login";
-        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
         break;
 
       case 403:
-        toast.error("Bạn không có quyền truy cập chức năng này.");
-        window.location.href = "/unauthorized";
+        toast.error(error.response?.data?.message ||"Bạn không có quyền truy cập chức năng này.");
+        // window.location.href = "/unauthorized";
         break;
 
       case 404:
@@ -53,7 +53,7 @@ axiosInstance.interceptors.response.use(
         break;
 
       case 500:
-        toast.error("Lỗi server. Vui lòng thử lại sau.");
+        toast.error(error.response?.data?.message || "Lỗi server. Vui lòng thử lại sau.");
         break;
 
       default:
