@@ -1,21 +1,21 @@
-import Trick from '../models/trick.model';
-import Staff from '../models/staff.model';
-import Job from '../models/job.model';
-import { IS_DELETED, TRICK_STATUS } from '../utils/constants';
+import Service from '../models/service.model';
+import { IS_DELETED, SERVICE_STATUS } from '../utils/constants';
+
+const type = "trick";
 
 export const createTrick = async (req, res) => {
   try {
     const data = req.body;
-    const newTrick = await Trick.create(data);
+    const newTrick = await Service.create({ ...data, type });
     res.status(201).json({
       success: true,
-      message: "Tạo thủ thuật thành công",
+      message: "Tạo dịch vụ thành công",
       data: newTrick,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: "Không thể tạo thủ thuật",
+      message: "Không thể tạo dịch vụ",
       error: error.message,
     });
   }
@@ -28,13 +28,12 @@ export const getListTrick = async (req, res) => {
       limit = 10,
       search = "",
       status,
-      staffId,
     } = req.query;
 
     const query = { isDeleted: IS_DELETED.NO };
 
     if (status !== undefined) query.status = parseInt(status);
-    if (staffId) query.staffId = staffId;
+    if (type) query.type = type;
 
     if (search) {
       query.$or = [
@@ -59,7 +58,9 @@ export const getListTrick = async (req, res) => {
       ],
     };
 
-    const result = await Trick.paginate(query, options);
+    const result = await Service.paginate(query, options);
+    console.log(result);
+    
 
     res.status(200).json({
       success: true,
@@ -80,18 +81,18 @@ export const getListTrick = async (req, res) => {
 
 export const getAllTrick = async (req, res) => {
   try {
-    const tricks = await Trick.find({ isDeleted: IS_DELETED.NO })
+    const services = await Service.find({ isDeleted: IS_DELETED.NO, type })
       .populate("staffIds", "name role phone email status")
       .populate("jobIds", "name time description status isFrist");
     res.status(200).json({
       success: true,
-      data: tricks,
+      data: services,
     });
   }
   catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi lấy danh sách thủ thuật",
+      message: "Lỗi khi lấy danh sách dịch vụ",
       error: error.message,
     });
   }
@@ -99,18 +100,17 @@ export const getAllTrick = async (req, res) => {
 
 export const getTrickById = async (req, res) => {
   try {
-    const trick = await Trick.findById(req.params.id)
+    const service = await Service.findById(req.params.id).populate("jobIds", "name time description status isFirst")
       .populate("staffIds", "name role phone email status")
-      .populate("jobIds", "name time description status isFrist");
-    if (!trick || trick.isDeleted === IS_DELETED.YES) {
-      return res.status(404).json({
+    if (!service || service.isDeleted === IS_DELETED.YES) {
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy thủ thuật",
       });
     }
     res.status(200).json({
       success: true,
-      data: trick,
+      data: service,
     });
   } catch (error) {
     res.status(500).json({
@@ -123,29 +123,29 @@ export const getTrickById = async (req, res) => {
 
 export const updateTrick = async (req, res) => {
   try {
-    const trick = await Trick.findByIdAndUpdate(req.params.id, req.body, {
+    const service = await Service.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     })
       .populate("staffIds", "name role phone email status")
       .populate("jobIds", "name time description status isFrist");
 
-    if (!trick) {
-      return res.status(404).json({
+    if (!service) {
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy thủ thuật để cập nhật",
+        message: "Không tìm thấy dịch vụ để cập nhật",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Cập nhật thủ thuật thành công",
-      data: trick,
+      message: "Cập nhật dịch vụ thành công",
+      data: service,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: "Lỗi khi cập nhật thủ thuật",
+      message: "Lỗi khi cập nhật dịch vụ",
       error: error.message,
     });
   }
@@ -153,25 +153,25 @@ export const updateTrick = async (req, res) => {
 
 export const softDeleteTrick = async (req, res) => {
   try {
-    const trick = await Trick.findById(req.params.id);
-    if (!trick) {
-      return res.status(404).json({
+    const service = await Service.findById(req.params.id);
+    if (!service) {
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy thủ thuật để xóa",
+        message: "Không tìm thấy dịch vụ để xóa",
       });
     }
 
-    trick.isDeleted = IS_DELETED.YES;
-    await trick.save();
+    service.isDeleted = IS_DELETED.YES;
+    await service.save();
 
     res.status(200).json({
       success: true,
-      message: "Đã xóa thủ thuật thành công",
+      message: "Đã xóa dịch vụ thành công",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi xóa thủ thuật",
+      message: "Lỗi khi xóa dịch vụ",
       error: error.message,
     });
   }
@@ -179,24 +179,24 @@ export const softDeleteTrick = async (req, res) => {
 
 export const hardDeleteTrick = async (req, res) => {
   try {
-    const trick = await Trick.findByIdAndDelete(req.params.id);
+    const service = await Service.findByIdAndDelete(req.params.id);
 
-    if (!trick) {
-      return res.status(404).json({
+    if (!service) {
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy thủ thuật để xóa",
+        message: "Không tìm thấy dịch vụ để xóa",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Đã xóa thủ thuật khỏi hệ thống thành công",
-      deletedData: trick,
+      message: "Đã xóa dịch vụ khỏi hệ thống thành công",
+      deletedData: service,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi xóa thủ thuật",
+      message: "Lỗi khi xóa dịch vụ",
       error: error.message,
     });
   }
@@ -208,33 +208,33 @@ export const updateTrickStatus = async (req, res) => {
     const { status } = req.body;
 
     const parsedStatus = parseInt(status);
-    if (!Object.values(TRICK_STATUS).includes(parsedStatus)) {
+    if (!Object.values(SERVICE_STATUS).includes(parsedStatus)) {
       return res.status(400).json({
         success: false,
         message: "Giá trị trạng thái không hợp lệ",
       });
     }
 
-    const trick = await Trick.findById(id);
-    if (!trick) {
-      return res.status(404).json({
+    const service = await Service.findById(id);
+    if (!service) {
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy thủ thuật",
+        message: "Không tìm thấy dịch vụ",
       });
     }
 
-    trick.status = parsedStatus;
-    await trick.save();
+    service.status = parsedStatus;
+    await service.save();
 
     res.status(200).json({
       success: true,
-      message: "Cập nhật trạng thái thủ thuật thành công",
-      data: trick,
+      message: "Cập nhật trạng thái dịch vụ thành công",
+      data: service,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi cập nhật trạng thái thủ thuật",
+      message: "Lỗi khi cập nhật trạng thái dịch vụ",
       error: error.message,
     });
   }

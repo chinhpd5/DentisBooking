@@ -34,10 +34,10 @@ function LocationEdit() {
       queryClient.invalidateQueries({ queryKey: ["locations"] });
       navigate("/location");
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      Toast.error("Cập nhật thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (error: unknown) => {
+    //   const err = error as { response?: { data?: { message?: string } } };
+    //   Toast.error("Cập nhật thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const onFinish = (values: Partial<CreateLocation>) => {
@@ -52,7 +52,7 @@ function LocationEdit() {
     <div>
       <h2>Cập nhật tầng</h2>
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} initialValues={location}>
             <Row gutter={24}>
               <Col span={12}>
@@ -75,14 +75,14 @@ function LocationEdit() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Cập nhật
                   </Button>
                   <Button htmlType="button" onClick={() => form.resetFields()}>
-                    Reset
+                    Nhập lại
                   </Button>
                 </Space>
               </Form.Item>

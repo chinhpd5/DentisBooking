@@ -1,5 +1,5 @@
 import Joi from "joi";
-import { IS_DELETED, TRICK_STATUS } from "../utils/constants";
+import { IS_DELETED, SERVICE_STATUS } from "../utils/constants";
 
 export const createTrickSchema = Joi.object({
   name: Joi.string().required().min(1).max(200).messages({
@@ -12,6 +12,10 @@ export const createTrickSchema = Joi.object({
   time: Joi.number().required().messages({
     "number.base": "Thời gian thủ thuật phải là số",
     "any.required": "Thời gian thủ thuật là bắt buộc",
+  }),
+  type: Joi.string().valid("job", "trick").messages({
+    "string.base": "Loại thủ thuật phải là chuỗi",
+    "any.only": "Loại thủ thuật chỉ có thể là 'job' hoặc 'trick'",
   }),
   staffIds: Joi.array().items(Joi.string()).messages({
     "array.base": "Danh sách staffIds phải là mảng",
@@ -29,9 +33,9 @@ export const createTrickSchema = Joi.object({
     "string.base": "Mô tả phải là chuỗi",
     "string.max": "Mô tả tối đa {#limit} ký tự",
   }),
-  status: Joi.number().valid(...Object.values(TRICK_STATUS)).messages({
+  status: Joi.number().valid(...Object.values(SERVICE_STATUS)).messages({
     "number.base": "Trạng thái thủ thuật phải là số",
-    "any.only": `Chỉ chấp nhận các giá trị: ${Object.values(TRICK_STATUS).join(", ")}`,
+    "any.only": `Chỉ chấp nhận các giá trị: ${Object.values(SERVICE_STATUS).join(", ")}`,
   }),
   isDeleted: Joi.number().valid(...Object.values(IS_DELETED)).messages({
     "number.base": "Trạng thái isDeleted phải là số",
@@ -40,6 +44,6 @@ export const createTrickSchema = Joi.object({
 });
 
 export const updateTrickSchema = createTrickSchema.fork(
-  ["name", "time", "staffIds", "jobIds", "countStaff", "description", "status"],
+  ["name", "time", "type", "staffIds", "jobIds", "countStaff", "description", "status"],
   (schema) => schema.optional()
 );

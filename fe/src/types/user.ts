@@ -1,5 +1,5 @@
 import { USER_STATUS } from "../contants";
-import { IStaff } from "./staff";
+// import { IStaff } from "./staff";
 
 interface IUser {
   _id: string,
@@ -7,7 +7,7 @@ interface IUser {
   username: string,
   role: string,
   status: USER_STATUS,
-  staffId: IStaff
+  // staffId: IStaff
 }
 
 export type Login = {
@@ -20,7 +20,7 @@ export type CreateUser ={
   username: string,
   role: string,
   status: USER_STATUS,
-  staffId: IStaff,
+  // staffId: IStaff,
   password: string
 }
 

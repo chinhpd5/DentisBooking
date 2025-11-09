@@ -12,6 +12,13 @@
   bottom: 0;
   overflow-y: auto; /* Nếu menu dài có thể scroll riêng */
 }
+
+.branding {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 20px 10px;
+}
 .main {
   margin-left: 280px; /* Đẩy phần nội dung sang phải */
   flex: 1;
@@ -35,10 +42,17 @@
 
 .title {
   color: rgb(255, 255, 255);
-  margin: 20px 20px 15px;
+  margin: 0;
 }
 
 .title-logout {
   color: #333;
   cursor: pointer;
+}
+
+.logo {
+  display: block;
+  width: 50px;
+  height: auto;
+  margin: 0;
 }

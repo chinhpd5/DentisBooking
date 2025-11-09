@@ -17,6 +17,7 @@ import { getSeatById, updateSeat } from "../../services/seat";
 import { getListLocation } from "../../services/location";
 import ISeat, { CreateSeat } from "../../types/seat";
 import { SEAT_STATUS } from "../../contants";
+import ILocation from "../../types/location";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -62,10 +63,10 @@ function SeatEdit() {
       queryClient.invalidateQueries({ queryKey: ["seats"] });
       navigate("/seat");
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      Toast.error("Cập nhật thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (error: unknown) => {
+    //   const err = error as { response?: { data?: { message?: string } } };
+    //   Toast.error("Cập nhật thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const onFinish = (values: Partial<CreateSeat>) => {
@@ -80,7 +81,7 @@ function SeatEdit() {
     <div>
       <h2>Cập nhật ghế</h2>
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
@@ -97,6 +98,9 @@ function SeatEdit() {
                 <Form.Item
                   name="locationId"
                   label="Vị trí"
+                  rules={[
+                    { required: true, message: "Vui lòng chọn vị trí" },
+                  ]}
                 >
                   <Select 
                     placeholder="Chọn vị trí" 
@@ -104,10 +108,10 @@ function SeatEdit() {
                     showSearch
                     optionFilterProp="children"
                     filterOption={(input, option) =>
-                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      (String(option?.label ?? '')).toLowerCase().includes(input.toLowerCase())
                     }
                   >
-                    {locationList?.data?.map((location) => (
+                    {locationList?.data?.map((location: ILocation) => (
                       <Option key={location._id} value={location._id} label={location.name}>
                         {location.name}
                       </Option>
@@ -141,14 +145,14 @@ function SeatEdit() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Cập nhật
                   </Button>
                   <Button htmlType="button" onClick={() => form.resetFields()}>
-                    Reset
+                    Nhập lại
                   </Button>
                 </Space>
               </Form.Item>

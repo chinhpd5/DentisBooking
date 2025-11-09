@@ -40,7 +40,7 @@ export const getLocationById = async (req, res) => {
     const { id } = req.params;
     const location = await Location.findById(id);
     if (!location) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tầng",
       });
@@ -66,7 +66,7 @@ export const updateLocation = async (req, res) => {
       runValidators: true,
     });
     if (!updatedLocation) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tầng để cập nhật",
       });
@@ -104,7 +104,7 @@ export const deleteLocation = async (req, res) => {
 
     const deletedLocation = await Location.findByIdAndDelete(id);
     if (!deletedLocation) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tầng để xóa",
       });

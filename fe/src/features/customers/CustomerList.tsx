@@ -5,7 +5,7 @@ import { getListCustomer, deleteCustomer } from "../../services/customer";
 import toast from "react-hot-toast";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import ICustomer from "../../types/ICustomer";
+import ICustomer from "../../types/customer";
 import IData from "../../types";
 import dayjs from "dayjs";
 
@@ -40,17 +40,14 @@ function CustomerList() {
     onSuccess: () => {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["customers"] });
-    },
-    onError: (error: any) => {
-      toast.error("Xóa thất bại: " + error.message);
-    },
+    }
   });
 
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
   };
 
-  const handleFinish = (values: any) => {
+  const handleFinish = (values: FilterType) => {
     setFilter({
       currentPage: 1,
       pageSize: 10,
@@ -70,7 +67,7 @@ function CustomerList() {
   const columns = [
     {
       title: "STT",
-      render: (_: any, __: any, index: number) =>
+      render: (_: ICustomer, __: ICustomer, index: number) =>
         (filter.currentPage - 1) * filter.pageSize + index + 1,
       width: 70,
     },
@@ -85,22 +82,36 @@ function CustomerList() {
     {
       title: "",
       key: "actions",
-      render: (_: any, item: ICustomer) => (
-        <Space>
+      render: (_: ICustomer, item: ICustomer) => (
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
           </Link>
+         
           <Popconfirm
             title="Xác nhận xóa"
+            description="Bạn có chắc chắn muốn xóa không?"
             onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
@@ -124,14 +135,16 @@ function CustomerList() {
               <Input placeholder="Tên, số điện thoại hoặc địa chỉ" allowClear />
             </Form.Item>
           </Col>
-          <Col span={4} style={{ display: "flex", alignItems: "flex-end" }}>
+          <Col span={4} style={{ display: "flex", alignItems: "center", paddingTop: 28 }}>
             <Form.Item>
-              <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
-                Lọc
-              </Button>
-              <Button onClick={handleReset} style={{ marginLeft: 8 }}>
-                Đặt lại
-              </Button>
+              <Space>
+                <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
+                  Lọc
+                </Button>
+                <Button onClick={handleReset}>
+                  Đặt lại
+                </Button>
+              </Space>
             </Form.Item>
           </Col>
         </Row>

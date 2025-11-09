@@ -1,4 +1,4 @@
-import { SEAT_STATUS, USER_ROLE } from "../contants";
+import { SEAT_STATUS, SERVICE_TYPE, USER_ROLE } from "../contants";
 
 export const convertNameRoleArray = () => {
   const arrayRole: string[] = Object.values(USER_ROLE);
@@ -16,10 +16,10 @@ export const convertNameRoleArray = () => {
 
 export const convertNameRole = (role: string) =>{
   switch (role) {
-    case USER_ROLE.CUSTOMER:
-      return "Khách hàng"
-    case USER_ROLE.ADMIN:
-      return "Quản trị viên"
+    // case USER_ROLE.CUSTOMER:
+    //   return "Khách hàng"
+    // case USER_ROLE.ADMIN:
+    //   return "Quản trị viên"
     case USER_ROLE.DOCTOR:
       return "Bác sỹ"
     case USER_ROLE.RECEPTIONIST:
@@ -91,3 +91,13 @@ export const getStatusBorderColor = (status: SEAT_STATUS) => {
   }
 };
 
+export const getServiceType = (type: string) => {
+  switch (type) {
+    case SERVICE_TYPE.JOB:
+      return "Công việc KTV";
+    case SERVICE_TYPE.TRICK:
+      return "Thủ thuật";
+    default:
+      return "Không xác định"
+  }
+};

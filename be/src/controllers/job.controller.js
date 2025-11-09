@@ -1,25 +1,25 @@
-import Job from '../models/job.model';
-import { IS_DELETED, JOB_STATUS } from '../utils/constants';
-
+import Service from '../models/service.model';
+import { IS_DELETED, SERVICE_STATUS } from '../utils/constants';
+const type = "job";
 export const createJob = async (req, res) => {
   try {
     const data = req.body;
-    const newJob = await Job.create(data);
+    const newJob = await Service.create({ ...data, type: "job" });
     res.status(201).json({
       success: true,
-      message: "Tạo công việc thành công",
+      message: "Tạo dịch vụ thành công",
       data: newJob,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: "Không thể tạo công việc",
+      message: "Không thể tạo dịch vụ",
       error: error.message,
     });
   }
 };
 
-export const getAllJobs = async (req, res) => {
+export const getListJob = async (req, res) => {
   try {
     const {
       page = 1,
@@ -28,7 +28,7 @@ export const getAllJobs = async (req, res) => {
       status,
     } = req.query;
 
-    const query = { isDeleted: IS_DELETED.NO };
+    const query = { isDeleted: IS_DELETED.NO, type };
 
     if (status !== undefined) query.status = parseInt(status);
 
@@ -45,7 +45,7 @@ export const getAllJobs = async (req, res) => {
       sort: { createdAt: -1 },
     };
 
-    const result = await Job.paginate(query, options);
+    const result = await Service.paginate(query, options);
 
     res.status(200).json({
       success: true,
@@ -58,19 +58,42 @@ export const getAllJobs = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi lấy danh sách công việc",
+      message: "Lỗi khi lấy danh sách dịch vụ",
       error: error.message,
     });
   }
 };
 
-export const getJobById = async (req, res) => {
+export const getByIdJob = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    const job = await Service.findById(req.params.id);
     if (!job || job.isDeleted === IS_DELETED.YES) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy công việc",
+        message: "Không tìm thấy dịch vụ",
+      });
+    }
+    res.status(200).json({
+      success: true,
+      data: job,
+    });
+  }
+  catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy chi tiết dịch vụ",
+      error: error.message,
+    });
+  }
+};  
+
+export const getAllJob = async (req, res) => {
+  try {
+    const job = await Service.find({ isDeleted: IS_DELETED.NO, type });
+    if (!job || job.isDeleted === IS_DELETED.YES) {
+      return res.status(400).json({
+        success: false,
+        message: "Không tìm thấy dịch vụ",
       });
     }
     res.status(200).json({
@@ -80,7 +103,7 @@ export const getJobById = async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi lấy chi tiết công việc",
+      message: "Lỗi khi lấy chi tiết dịch vụ",
       error: error.message,
     });
   }
@@ -88,27 +111,29 @@ export const getJobById = async (req, res) => {
 
 export const updateJob = async (req, res) => {
   try {
-    const job = await Job.findByIdAndUpdate(req.params.id, req.body, {
+    console.log(req.body);
+    
+    const job = await Service.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
 
     if (!job) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy công việc để cập nhật",
+        message: "Không tìm thấy dịch vụ để cập nhật",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Cập nhật công việc thành công",
+      message: "Cập nhật dịch vụ thành công",
       data: job,
     });
   } catch (error) {
     res.status(400).json({
       success: false,
-      message: "Lỗi khi cập nhật công việc",
+        message: "Lỗi khi cập nhật dịch vụ",
       error: error.message,
     });
   }
@@ -116,11 +141,11 @@ export const updateJob = async (req, res) => {
 
 export const softDeleteJob = async (req, res) => {
   try {
-    const job = await Job.findById(req.params.id);
+    const job = await Service.findById(req.params.id);
     if (!job) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy công việc để xóa",
+        message: "Không tìm thấy dịch vụ để xóa",
       });
     }
 
@@ -129,12 +154,12 @@ export const softDeleteJob = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Đã xóa công việc thành công",
+      message: "Đã xóa dịch vụ thành công",
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi xóa công việc",
+      message: "Lỗi khi xóa dịch vụ",
       error: error.message,
     });
   }
@@ -142,24 +167,24 @@ export const softDeleteJob = async (req, res) => {
 
 export const hardDeleteJob = async (req, res) => {
   try {
-    const job = await Job.findByIdAndDelete(req.params.id);
+    const job = await Service.findByIdAndDelete(req.params.id);
 
     if (!job) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy công việc để xóa",
+        message: "Không tìm thấy dịch vụ để xóa",
       });
     }
 
     res.status(200).json({
       success: true,
-      message: "Đã xóa công việc khỏi hệ thống thành công",
+      message: "Đã xóa dịch vụ khỏi hệ thống thành công",
       deletedData: job,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi xóa công việc",
+      message: "Lỗi khi xóa dịch vụ",
       error: error.message,
     });
   }
@@ -170,18 +195,18 @@ export const updateJobStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    if (!Object.values(JOB_STATUS).includes(parseInt(status))) {
+    if (!Object.values(SERVICE_STATUS).includes(parseInt(status))) {
       return res.status(400).json({
         success: false,
         message: "Giá trị trạng thái không hợp lệ",
       });
     }
 
-    const job = await Job.findById(id);
+    const job = await Service.findById(id);
     if (!job) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
-        message: "Không tìm thấy công việc",
+        message: "Không tìm thấy dịch vụ",
       });
     }
 
@@ -190,34 +215,34 @@ export const updateJobStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Cập nhật trạng thái công việc thành công",
+      message: "Cập nhật trạng thái dịch vụ thành công",
       data: job,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi cập nhật trạng thái công việc",
+      message: "Lỗi khi cập nhật trạng thái dịch vụ",
       error: error.message,
     });
   }
 };
 
-export const getJobIsFirst = async (req, res) => {
+export const getAllJobIsFirst = async (req, res) => {
   try {
-    const list = await Job.find({
+    const list = await Service.find({
       isDeleted: IS_DELETED.NO,
-      isFrist: true,
+      isFirst: true,
     });
 
     res.status(200).json({
       success: true,
-      message: "Lấy danh sách công việc cần thực hiện trước thủ thuật thành công",
+      message: "Lấy danh sách dịch vụ cần thực hiện trước thủ thuật thành công",
       data: list,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Lỗi khi lấy danh sách công việc cần thực hiện trước thủ thuật",
+      message: "Lỗi khi lấy danh sách dịch vụ cần thực hiện trước thủ thuật",
       error: error.message,
     });
   }

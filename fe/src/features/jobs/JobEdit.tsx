@@ -48,10 +48,10 @@ function JobEdit() {
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
       navigate("/job");
     },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      Toast.error("Cập nhật công việc thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (err: unknown) => {
+    //   const error = err as { response?: { data?: { message?: string } } };
+    //   Toast.error("Cập nhật công việc thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const onFinish = (values: Record<string, unknown>) => {
@@ -67,7 +67,7 @@ function JobEdit() {
       const submitData: Partial<CreateJob> = {
         name: values.name as string,
         time: timeInSeconds,
-        isFrist: values.isFrist as boolean,
+        isFirst: values.isFirst as boolean,
         description: values.description as string,
         status: values.status as JOB_STATUS,
       };
@@ -89,21 +89,21 @@ function JobEdit() {
       <h2>Cập nhật công việc KTV</h2>
 
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
                 <Form.Item
                   name="name"
-                  label="Tên công việc"
-                  rules={[{ required: true, message: "Vui lòng nhập tên công việc" }]}
+                  label="Tên công việc chuẩn bị"
+                  rules={[{ required: true, message: "Vui lòng nhập tên công việc chuẩn bị" }]}
                 >
                   <Input placeholder="Nhập tên công việc" />
                 </Form.Item>
 
                 <Form.Item
                   name="time"
-                  label="Thời gian"
+                  label="Thời gian (giờ:phút)"
                   rules={[
                     { required: true, message: "Vui lòng chọn thời gian" },
                   ]}
@@ -118,8 +118,8 @@ function JobEdit() {
 
               <Col span={12}>
                 <Form.Item
-                  name="isFrist"
-                  label="Cần thực hiện trước thủ thuật"
+                  name="isFirst"
+                  label="Công việc này được thực hiện trước thủ thuật"
                   valuePropName="checked"
                 >
                   <Switch checkedChildren="Có" unCheckedChildren="Không" />
@@ -152,13 +152,13 @@ function JobEdit() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Cập nhật
                   </Button>
-                  <Button onClick={onReset}>Reset</Button>
+                  <Button onClick={onReset}>Nhập lại</Button>
                 </Space>
               </Form.Item>
             </Row>

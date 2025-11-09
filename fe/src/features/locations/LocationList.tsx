@@ -40,10 +40,10 @@ function LocationList() {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["locations"] });
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error("Xóa thất bại: " + err.response?.data?.message || "Lỗi không xác định");
-    },
+    // onError: (error: unknown) => {
+    //   const err = error as { response?: { data?: { message?: string } } };
+    //   toast.error("Xóa thất bại: " + err.response?.data?.message || "Lỗi không xác định");
+    // },
   });
 
   const handleDelete = (id: string) => {
@@ -92,22 +92,35 @@ function LocationList() {
       title: "",
       key: "actions",
       render: (_: unknown, item: ILocation) => (
-        <Space>
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
           </Link>
+         
           <Popconfirm
             title="Xác nhận xóa"
-            description="Bạn có chắc chắn muốn xóa tầng này không?"
+            description="Bạn có chắc chắn muốn xóa không?"
             onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
@@ -131,14 +144,16 @@ function LocationList() {
               <Input placeholder="Tên tầng hoặc mô tả" allowClear />
             </Form.Item>
           </Col>
-          <Col span={4} style={{ display: "flex", alignItems: "flex-end" }}>
+          <Col span={4} style={{ display: "flex", alignItems: "center", paddingTop: 28 }}>
             <Form.Item>
-              <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
-                Lọc
-              </Button>
-              <Button onClick={handleReset} style={{ marginLeft: 8 }}>
-                Đặt lại
-              </Button>
+              <Space>
+                <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
+                  Lọc
+                </Button>
+                <Button onClick={handleReset}>
+                  Đặt lại
+                </Button>
+              </Space>
             </Form.Item>
           </Col>
         </Row>

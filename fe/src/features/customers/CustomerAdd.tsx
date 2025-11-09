@@ -2,7 +2,7 @@ import { Button, Col, DatePicker, Flex, Form, Input, Row, Select, Space } from "
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import Toast from "react-hot-toast";
-import { CreateCustomer } from "../../types/ICustomer";
+import { CreateCustomer } from "../../types/customer";
 import { addCustomer } from "../../services/customer";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
@@ -47,7 +47,7 @@ function CustomerAdd() {
       <h2>Thêm mới khách hàng</h2>
 
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
@@ -76,6 +76,17 @@ function CustomerAdd() {
                 >
                   <Input placeholder="Nhập số điện thoại" maxLength={10} />
                 </Form.Item>
+
+                <Form.Item
+                  name="gender"
+                  label="Giới tính"
+                >
+                  <Select placeholder="Chọn giới tính">
+                    <Option value="male">Nam</Option>
+                    <Option value="female">Nữ</Option>
+                    <Option value="other">Khác</Option>
+                  </Select>
+                </Form.Item>
               </Col>
 
               <Col span={12}>
@@ -90,7 +101,7 @@ function CustomerAdd() {
                 >
                   <Input.TextArea
                     placeholder="Nhập địa chỉ"
-                    rows={4}
+                    rows={5}
                     maxLength={300}
                     showCount
                   />
@@ -107,16 +118,6 @@ function CustomerAdd() {
                   />
                 </Form.Item>
 
-                <Form.Item
-                  name="gender"
-                  label="Giới tính"
-                >
-                  <Select placeholder="Chọn giới tính">
-                    <Option value="male">Nam</Option>
-                    <Option value="female">Nữ</Option>
-                    <Option value="other">Khác</Option>
-                  </Select>
-                </Form.Item>
               </Col>
             </Row>
 
@@ -139,13 +140,13 @@ function CustomerAdd() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Thêm mới
                   </Button>
-                  <Button onClick={onReset}>Reset</Button>
+                  <Button onClick={onReset}>Nhập lại</Button>  
                 </Space>
               </Form.Item>
             </Row>

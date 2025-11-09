@@ -75,7 +75,7 @@ export const getCustomerById = async (req, res) => {
     const { id } = req.params;
     const customer = await Customer.findById(id);
     if (!customer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng",
       });
@@ -102,7 +102,7 @@ export const updateCustomer = async (req, res) => {
       runValidators: true,
     });
     if (!updatedCustomer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng để cập nhật",
       });
@@ -126,7 +126,7 @@ export const deleteCustomer = async (req, res) => {
     const { id } = req.params;
     const deletedCustomer = await Customer.findByIdAndDelete(id);
     if (!deletedCustomer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng để xóa",
       });
@@ -150,7 +150,7 @@ export const getCustomerByPhone = async (req, res) => {
     const { phone } = req.params;
     const customer = await Customer.findOne({ phone });
     if (!customer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng",
       });

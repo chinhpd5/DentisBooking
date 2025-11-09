@@ -31,6 +31,10 @@ import CustomerList from "../features/customers/CustomerList";
 import CustomerAdd from "../features/customers/CustomerAdd";
 import CustomerEdit from "../features/customers/CustomerEdit";
 import CustomerDetail from "../features/customers/CustomerDetail";
+import BookingAdd from "../features/bookings/BookingAdd";
+import BookingList from "../features/bookings/BookingList";
+import BookingEdit from "../features/bookings/BookingEdit";
+import BookingDetail from "../features/bookings/BookingDetail";
 
 const router = createBrowserRouter([
   {
@@ -92,6 +96,14 @@ const router = createBrowserRouter([
           { path: "add", element: <CustomerAdd/>},
           { path: "edit/:id", element: <CustomerEdit/>},
           { path: "detail/:id", element: <CustomerDetail/>}
+        ]
+      },
+      {
+        path: "booking", children: [
+          { path: "", element: <BookingList/>},
+          { path: "add", element: <BookingAdd/>},
+          { path: "edit/:id", element: <BookingEdit/>},
+          { path: "detail/:id", element: <BookingDetail/>}
         ]
       }
     ],

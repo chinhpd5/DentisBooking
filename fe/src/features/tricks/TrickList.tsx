@@ -38,8 +38,6 @@ function TrickList() {
       getListTrick(filter.currentPage, filter.pageSize, filter.search, filter.status),
     placeholderData: (prev) => prev,
   });
-  console.log(data);
-  
 
 
   if (error) {
@@ -53,11 +51,7 @@ function TrickList() {
     onSuccess: () => {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["tricks"] });
-    },
-    onError: (error: unknown) => {
-      const errorMessage = error as { message?: string };
-      toast.error("Xóa thất bại: " + errorMessage.message);
-    },
+    }
   });
 
   const handleDelete = (id: string) => {
@@ -120,12 +114,12 @@ function TrickList() {
       },
     },
     {
-      title: "Số lượng nhân viên",
+      title: "Số lượng KTV đi kèm",
       dataIndex: "countStaff",
       key: "countStaff",
     },
     {
-      title: "Số công việc",
+      title: "Số lượng Công việc chuẩn bị",
       dataIndex: "jobIds",
       key: "jobIds",
       render: (jobIds: unknown[]) => jobIds?.length || 0,
@@ -144,22 +138,35 @@ function TrickList() {
       title: "",
       key: "actions",
       render: (_: unknown, item: ITrick) => (
-        <Space>
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
           </Link>
+         
           <Popconfirm
             title="Xác nhận xóa"
-            description="Bạn có chắc chắn muốn xóa thủ thuật này không?"
-            onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            description="Bạn có chắc chắn muốn xóa không?"
+            onConfirm={() => confirm(item._id)}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
@@ -173,7 +180,7 @@ function TrickList() {
         <Row gutter={16}>
           <Col span={6}>
             <Form.Item name="search" label="Tìm kiếm">
-              <Input placeholder="Tên thủ thuật hoặc mô tả" allowClear />
+              <Input placeholder="Tên thủ thuật" allowClear />
             </Form.Item>
           </Col>
           <Col span={6}>

@@ -1,4 +1,4 @@
-import { Button, Card, Col, Form, Input, Pagination, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
+import { Button, Card, Col, Form, Input, Modal, Pagination, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   AppstoreOutlined,
@@ -10,7 +10,7 @@ import {
   SearchOutlined,
   UnorderedListOutlined,
 } from "@ant-design/icons";
-import { getListSeat, deleteSeat } from "../../services/seat";
+import { getListSeat, deleteSeat, updateSeatStatus } from "../../services/seat";
 import { getListLocation } from "../../services/location";
 import { SEAT_STATUS } from "../../contants";
 import toast from "react-hot-toast";
@@ -40,6 +40,9 @@ function SeatList() {
     currentPage: 1,
     pageSize: 10,
   });
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedSeat, setSelectedSeat] = useState<ISeat | null>(null);
+  const [newStatus, setNewStatus] = useState<number | null>(null);
 
   const { data: locationList } = useQuery({
     queryKey: ["locations"],
@@ -71,8 +74,57 @@ function SeatList() {
     },
   });
 
+  const updateStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: number }) => updateSeatStatus(id, status),
+    onSuccess: () => {
+      toast.success("Cập nhật trạng thái thành công");
+      queryClient.invalidateQueries({ queryKey: ["seats"] });
+    },
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: { message?: string } } };
+      toast.error("Cập nhật trạng thái thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
+    },
+  });
+
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
+  };
+
+  const handleSeatClick = (seat: ISeat) => {
+    // Chỉ cho phép click khi trạng thái là AVAILABLE hoặc USING
+    if (seat.status !== SEAT_STATUS.AVAILABLE && seat.status !== SEAT_STATUS.USING) {
+      return;
+    }
+
+    const calculatedNewStatus = seat.status === SEAT_STATUS.AVAILABLE 
+      ? SEAT_STATUS.USING 
+      : SEAT_STATUS.AVAILABLE;
+
+    setSelectedSeat(seat);
+    setNewStatus(calculatedNewStatus);
+    setModalVisible(true);
+  };
+
+  const handleModalOk = async () => {
+    if (selectedSeat && newStatus !== null) {
+      try {
+        await updateStatusMutation.mutateAsync({ 
+          id: selectedSeat._id, 
+          status: newStatus 
+        });
+        setModalVisible(false);
+        setSelectedSeat(null);
+        setNewStatus(null);
+      } catch (error) {
+        console.error("Error updating seat status:", error);
+      }
+    }
+  };
+
+  const handleModalCancel = () => {
+    setModalVisible(false);
+    setSelectedSeat(null);
+    setNewStatus(null);
   };
 
   const handleFinish = (values: FilterType) => {
@@ -139,22 +191,35 @@ function SeatList() {
       title: "",
       key: "actions",
       render: (_: unknown, item: ISeat) => (
-        <Space>
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
           </Link>
+         
           <Popconfirm
             title="Xác nhận xóa"
-            description="Bạn có chắc chắn muốn xóa ghế này không?"
+            description="Bạn có chắc chắn muốn xóa không?"
             onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
@@ -165,8 +230,8 @@ function SeatList() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
         <h3>Danh sách ghế</h3>
-        <Space>
-          <Button.Group>
+        <Space size="middle">
+          <Space.Compact>
             <Button
               type={viewMode === 'table' ? 'primary' : 'default'}
               icon={<UnorderedListOutlined />}
@@ -181,9 +246,9 @@ function SeatList() {
             >
               Lưới
             </Button>
-          </Button.Group>
+          </Space.Compact>
           <Link to="add">
-            <Button type="primary" icon={<PlusOutlined />}>
+            <Button type="primary" icon={<PlusOutlined />} variant="solid">
               Thêm mới
             </Button>
           </Link>
@@ -238,6 +303,24 @@ function SeatList() {
         </Row>
       </Form>
 
+      <Modal
+        title="Xác nhận đổi trạng thái"
+        open={modalVisible}
+        onOk={handleModalOk}
+        onCancel={handleModalCancel}
+        okText="Xác nhận"
+        cancelText="Hủy"
+        confirmLoading={updateStatusMutation.isPending}
+      >
+        {selectedSeat && newStatus !== null && (
+          <p>
+            Bạn có chắc chắn muốn đổi trạng thái ghế <strong>"{selectedSeat.name}"</strong> từ{" "}
+            <strong>"{getStatusText(selectedSeat.status)}"</strong> sang{" "}
+            <strong>"{getStatusText(newStatus)}"</strong>?
+          </p>
+        )}
+      </Modal>
+
       {viewMode === 'table' ? (
         <Table
           columns={columns}
@@ -280,28 +363,51 @@ function SeatList() {
                         borderWidth: 2,
                         height: '100%',
                       }}
-                      hoverable
+                      hoverable={seat.status === SEAT_STATUS.AVAILABLE || seat.status === SEAT_STATUS.USING}
                       actions={[
-                        <Link key="detail" to={`detail/${seat._id}`}>
+                        <Link 
+                          key="detail" 
+                          to={`detail/${seat._id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <InfoCircleOutlined />
                         </Link>,
-                        <Link key="edit" to={`edit/${seat._id}`}>
+                        <Link 
+                          key="edit" 
+                          to={`edit/${seat._id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <EditOutlined />
                         </Link>,
-                        <Popconfirm
-                          key="delete"
-                          title="Xác nhận xóa"
-                          description="Bạn có chắc chắn muốn xóa ghế này không?"
-                          onConfirm={() => handleDelete(seat._id)}
-                          okText="Xóa"
-                          cancelText="Hủy"
-                          icon={<QuestionCircleOutlined style={{ color: "red" }} />}
-                        >
-                          <DeleteOutlined style={{ color: 'red' }} />
-                        </Popconfirm>,
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <Popconfirm
+                            key="delete"
+                            title="Xác nhận xóa"
+                            description="Bạn có chắc chắn muốn xóa ghế này không?"
+                            onConfirm={() => handleDelete(seat._id)}
+                            okText="Xóa"
+                            cancelText="Hủy"
+                            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+                          >
+                            <DeleteOutlined style={{ color: 'red', cursor: 'pointer' }} />
+                          </Popconfirm>
+                        </span>,
                       ]}
                     >
-                      <div style={{ textAlign: 'center' }}>
+                      <div 
+                        style={{ 
+                          textAlign: 'center',
+                          cursor: (seat.status === SEAT_STATUS.AVAILABLE || seat.status === SEAT_STATUS.USING) 
+                            ? 'pointer' 
+                            : 'default',
+                          minHeight: '100px',
+                        }}
+                        onClick={() => {
+                          if (seat.status === SEAT_STATUS.AVAILABLE || seat.status === SEAT_STATUS.USING) {
+                            handleSeatClick(seat);
+                          }
+                        }}
+                      >
                         <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8 }}>
                           {seat.name}
                         </div>

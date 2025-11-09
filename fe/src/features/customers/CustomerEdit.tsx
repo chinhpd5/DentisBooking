@@ -14,7 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Toast from "react-hot-toast";
 import { getCustomerById, updateCustomer } from "../../services/customer";
-import ICustomer, { CreateCustomer } from "../../types/ICustomer";
+import ICustomer, { CreateCustomer } from "../../types/customer";
 import dayjs from "dayjs";
 import type { Dayjs } from "dayjs";
 
@@ -49,9 +49,9 @@ function CustomerEdit() {
       queryClient.invalidateQueries({ queryKey: ["customers"] });
       navigate("/customer");
     },
-    onError: (error: { response?: { data?: { message?: string } } }) => {
-      Toast.error("Cập nhật thất bại: " + error?.response?.data?.message);
-    },
+    // onError: (error: { response?: { data?: { message?: string } } }) => {
+    //   Toast.error("Cập nhật thất bại: " + error?.response?.data?.message);
+    // },
   });
 
   const onFinish = (values: Partial<CreateCustomer> & { dateOfBirth?: Dayjs | string }) => {
@@ -77,7 +77,7 @@ function CustomerEdit() {
     <div>
       <h2>Cập nhật khách hàng</h2>
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical" initialValues={formatCustomerData(customer)}>
             <Row gutter={24}>
               <Col span={12}>
@@ -169,14 +169,14 @@ function CustomerEdit() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Cập nhật
                   </Button>
                   <Button htmlType="button" onClick={() => form.resetFields()}>
-                    Reset
+                    Nhập lại
                   </Button>
                 </Space>
               </Form.Item>

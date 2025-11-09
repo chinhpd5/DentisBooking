@@ -28,9 +28,6 @@ function UserDetail() {
       <Descriptions bordered column={1}>
         <Descriptions.Item label="Họ tên">{user.name}</Descriptions.Item>
         <Descriptions.Item label="Tên đăng nhập">{user.username}</Descriptions.Item>
-        <Descriptions.Item label="Email">{user.staffId?.email || 'Chưa có email'}</Descriptions.Item>
-        <Descriptions.Item label="Số điện thoại">{user.staffId?.phone || 'Chưa có số'}</Descriptions.Item>
-        <Descriptions.Item label="Thuộc nhân viên">{user.staffId?.name || 'Chưa liên kết'}</Descriptions.Item>
         <Descriptions.Item label="Vai trò">{convertNameRole(user.role)}</Descriptions.Item>
         <Descriptions.Item label="Trạng thái">
           <Tag color={user.status === USER_STATUS.ACTIVE ? 'green' : 'red'}>

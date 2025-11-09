@@ -41,10 +41,10 @@ function TrickAdd() {
       form.resetFields();
       navigate("/trick");
     },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      Toast.error("Thêm mới thủ thuật thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (err: unknown) => {
+    //   const error = err as { response?: { data?: { message?: string } } };
+    //   Toast.error("Thêm mới thủ thuật thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const onFinish = (values: Record<string, unknown>) => {
@@ -112,7 +112,7 @@ function TrickAdd() {
       <h2>Thêm mới thủ thuật</h2>
 
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
@@ -156,26 +156,26 @@ function TrickAdd() {
               <Col span={12}>
                 <Form.Item
                   name="countStaff"
-                  label="Số lượng nhân viên"
+                  label="Số lượng KTV đi kèm"
                   rules={[
-                    { required: true, message: "Vui lòng nhập số lượng nhân viên" },
-                    { type: "number", min: 1, message: "Số lượng nhân viên phải lớn hơn 0" },
+                    { required: true, message: "Vui lòng nhập Số lượng KTV đi kèm" },
+                    { type: "number", min: 0 , message: "Số lượng nhân viên phải lớn hơn hoặc bằng 0" },
                   ]}
                 >
                   <InputNumber
-                    placeholder="Nhập số lượng nhân viên"
+                    placeholder="Nhập Số lượng KTV đi kèm"
                     style={{ width: "100%" }}
-                    min={1}
+                    min={0}
                   />
                 </Form.Item>
 
                 <Form.Item
                   name="jobIds"
-                  label="Công việc"
+                  label="Công việc chuẩn bị"
                 >
                   <Select
                     mode="multiple"
-                    placeholder="Chọn công việc"
+                    placeholder="Chọn Công việc chuẩn bị"
                     allowClear
                   >
                     {jobList?.map((job: { _id: string; name: string; time: number }) => (
@@ -231,13 +231,13 @@ function TrickAdd() {
               </Row>
             )}
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Thêm mới
                   </Button>
-                  <Button onClick={onReset}>Reset</Button>
+                  <Button onClick={onReset}>Nhập lại</Button>
                 </Space>
               </Form.Item>
             </Row>

@@ -1,4 +1,4 @@
-import { Button, Col, Form, Input, Popconfirm, Row, Select, Space, Spin, Table, Tag } from "antd";
+import { Button, Col, Form, Input, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeleteOutlined, EditOutlined, InfoCircleOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { getListUser, deleteUser } from "../../services/user";
@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import IUser from "../../types/user";
 import IData from "../../types";
-import { convertNameRoleArray } from "../../utils/helper";
+import { convertNameRole, convertNameRoleArray } from "../../utils/helper";
 
 const { Option } = Select;
 const dataRole = convertNameRoleArray();
@@ -46,9 +46,7 @@ function UserList() {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["users"] });
     },
-    onError: (error: any) => {
-      toast.error("Xóa thất bại: " + error.message);
-    },
+   
   });
 
   const handleDelete = (id: string) => {
@@ -56,12 +54,16 @@ function UserList() {
   };
 
   const handleFinish = (values: any) => {
+    // Get current form values to ensure we capture all fields
+    const formValues = form.getFieldsValue();
+    const allValues = { ...formValues, ...values };
+    
     setFilter({
       currentPage: 1,
       pageSize: 10,
-      search: values.search || undefined,
-      role: values.role || undefined,
-      status: values.status ?? undefined,
+      search: allValues.search || undefined,
+      role: allValues.role !== undefined && allValues.role !== null && allValues.role !== "" ? allValues.role : undefined,
+      status: allValues.status !== undefined && allValues.status !== null && allValues.status !== "" ? allValues.status : undefined,
     });
   };
 
@@ -85,7 +87,7 @@ function UserList() {
     },
     { title: "Họ tên", dataIndex: "name" },
     { title: "Username", dataIndex: "username" },
-    { title: "Vai trò", dataIndex: "role" },
+    { title: "Vai trò", dataIndex: "role", render: (role: USER_ROLE) => convertNameRole(role) },
     {
       title: "Trạng thái",
       dataIndex: "status",
@@ -99,21 +101,35 @@ function UserList() {
       title: "",
       key: "actions",
       render: (_: any, item: IUser) => (
-        <Space>
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
           </Link>
+         
           <Popconfirm
             title="Xác nhận xóa"
-            onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            description="Bạn có chắc chắn muốn xóa không?"
+            onConfirm={() => confirm(item._id)}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
@@ -135,7 +151,7 @@ function UserList() {
               <Select placeholder="Chọn vai trò" allowClear>
                 {
                   dataRole.map(item => {
-                    return <Option value={item.value}>{item.name}</Option>
+                    return <Option key={item.value} value={item.value}>{convertNameRole(item.value)}</Option>
                   })
                 }
               </Select>
@@ -149,14 +165,16 @@ function UserList() {
               </Select>
             </Form.Item>
           </Col>
-          <Col span={4} style={{ display: "flex", alignItems: "flex-end" }}>
+          <Col span={4} style={{ display: "flex", alignItems: "center", paddingTop: 28 }}>  
             <Form.Item>
-              <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
-                Lọc
-              </Button>
-              <Button onClick={handleReset} style={{ marginLeft: 8 }}>
-                Đặt lại
-              </Button>
+              <Space>
+                <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
+                  Lọc
+                </Button>
+                <Button onClick={handleReset}>
+                  Đặt lại
+                </Button>
+              </Space>
             </Form.Item>
           </Col>
         </Row>

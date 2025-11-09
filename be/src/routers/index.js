@@ -6,6 +6,8 @@ import locationRouter from "./location.router";
 import seatRouter from "./seat.router";
 import jobRouter from "./job.router";
 import trickRouter from "./trick.router";
+import bookingRouter from "./booking.router";
+import serviceRouter from "./service.router";
 
 const routers = express.Router();
 
@@ -17,5 +19,7 @@ routers.use("/customer", customerRouter);
 routers.use("/seat", seatRouter);
 routers.use("/job", jobRouter);
 routers.use("/trick", trickRouter);
+routers.use("/booking", bookingRouter);
+routers.use("/service", serviceRouter);
 
 export default routers;

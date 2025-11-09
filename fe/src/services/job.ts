@@ -35,3 +35,8 @@ export const getJobIsFirst = async () => {
   const { data } = await axiosInstance.get(`job/first`);
   return data.data;
 };
+
+export const getAllJob = async () => {
+  const { data } = await axiosInstance.get(`job/all`);
+  return data.data;
+};

@@ -6,6 +6,7 @@ import { CreateSeat } from "../../types/seat";
 import { addSeat } from "../../services/seat";
 import { getListLocation } from "../../services/location";
 import { SEAT_STATUS } from "../../contants";
+import ILocation from "../../types/location";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -28,10 +29,10 @@ function SeatAdd() {
       form.resetFields();
       navigate("/seat");
     },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      Toast.error("Thêm ghế thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (err: unknown) => {
+    //   const error = err as { response?: { data?: { message?: string } } };
+    //   Toast.error("Thêm ghế thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const onFinish = (values: Record<string, unknown>) => {
@@ -54,7 +55,7 @@ function SeatAdd() {
       <h2>Thêm mới ghế</h2>
 
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
@@ -68,20 +69,23 @@ function SeatAdd() {
               </Col>
 
               <Col span={12}>
-                <Form.Item
-                  name="locationId"
-                  label="Vị trí"
-                >
+            <Form.Item
+              name="locationId"
+              label="Vị trí"
+              rules={[
+                { required: true, message: "Vui lòng chọn vị trí" },
+              ]}
+            >
                   <Select 
                     placeholder="Chọn vị trí" 
                     allowClear
                     showSearch
                     optionFilterProp="children"
                     filterOption={(input, option) =>
-                      (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                      (String(option?.label ?? '')).toLowerCase().includes(input.toLowerCase())
                     }
                   >
-                    {locationList?.data?.map((location) => (
+                    {locationList?.data?.map((location: ILocation) => (
                       <Option key={location._id} value={location._id} label={location.name}>
                         {location.name}
                       </Option>
@@ -115,13 +119,13 @@ function SeatAdd() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Thêm mới
                   </Button>
-                  <Button onClick={onReset}>Reset</Button>
+                  <Button onClick={onReset}>Nhập lại</Button>
                 </Space>
               </Form.Item>
             </Row>

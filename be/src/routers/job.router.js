@@ -1,13 +1,14 @@
 import express from "express";
 import {
   createJob,
-  getAllJobs,
-  getJobById,
+  getListJob,
+  getByIdJob,
+  getAllJob,
   updateJob,
   softDeleteJob,
   hardDeleteJob,
-    updateJobStatus,
-  getJobIsFirst
+  updateJobStatus,
+  getAllJobIsFirst
 } from "../controllers/job.controller";
 import { validateRequest } from "../middlewares/validateRequest";
 import {
@@ -21,12 +22,13 @@ const router = express.Router();
 router.use(checkAuth, checkAdminStaff);
 
 router.post("/", validateRequest(createJobSchema), createJob);
-router.get("/", getAllJobs);
-router.get("/first", getJobIsFirst);
-router.get("/:id", getJobById);
+router.get("/", getListJob);
+router.get("/all", getAllJob);
+router.get("/first", getAllJobIsFirst);
+router.get("/:id", getByIdJob);
 router.put("/:id", validateRequest(updateJobSchema), updateJob);
 router.patch("/:id/status", updateJobStatus);
-router.delete("/:id", hardDeleteJob);
+router.delete("/:id", softDeleteJob);
 
 export default router;
 

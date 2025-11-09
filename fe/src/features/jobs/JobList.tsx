@@ -108,11 +108,11 @@ function JobList() {
     },
     {
       title: "Cần thực hiện trước thủ thuật",
-      dataIndex: "isFrist",
-      key: "isFrist",
-      render: (isFrist: boolean) => (
-        <Tag color={isFrist ? "blue" : "default"}>
-          {isFrist ? "Có" : "Không"}
+      dataIndex: "isFirst",
+      key: "isFirst",
+      render: (isFirst: boolean) => (
+        <Tag color={isFirst ? "blue" : "default"}>
+          {isFirst ? "Có" : "Không"}
         </Tag>
       ),
     },
@@ -136,26 +136,40 @@ function JobList() {
       title: "",
       key: "actions",
       render: (_: unknown, item: IJob) => (
-        <Space>
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
           </Link>
+         
           <Popconfirm
             title="Xác nhận xóa"
-            description="Bạn có chắc chắn muốn xóa công việc này không?"
-            onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            description="Bạn có chắc chắn muốn xóa không?"
+            onConfirm={() => confirm(item._id)}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
     },
+    
   ];
 
   return (
@@ -176,14 +190,16 @@ function JobList() {
               </Select>
             </Form.Item>
           </Col>
-          <Col span={4} style={{ display: "flex", alignItems: "flex-end" }}>
+          <Col span={4} style={{ display: "flex", alignItems: "center", paddingTop: 28 }}>
             <Form.Item>
-              <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
-                Lọc
-              </Button>
-              <Button onClick={handleReset} style={{ marginLeft: 8 }}>
-                Đặt lại
-              </Button>
+              <Space>
+                <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
+                  Lọc
+                </Button>
+                <Button onClick={handleReset}>
+                  Đặt lại
+                </Button>
+              </Space>
             </Form.Item>
           </Col>
         </Row>

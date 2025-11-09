@@ -4,7 +4,7 @@ interface IJob {
   _id: string;
   name: string;
   time: number;
-  isFrist: boolean;
+  isFirst: boolean;
   description: string;
   status: JOB_STATUS;
   isDeleted: IS_DELETED;

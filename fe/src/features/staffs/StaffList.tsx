@@ -38,7 +38,7 @@ function StaffList() {
   const columns: TableProps<IStaff>["columns"] = [
     {
       title: "STT",
-      render: (_: any, __: any, index: number) =>
+      render: (_: unknown, __: unknown, index: number) =>
         (filter.currentPage - 1) * filter.pageSize + index + 1,
       width: 70,
     },
@@ -69,7 +69,7 @@ function StaffList() {
       dataIndex: "status",
       key: "status",
       render: (status) => {
-        let color = status ? "green" : "red";
+        const color = status ? "green" : "red";
         return (
           <Tag color={color} key={status}>
             {status ? "Đang làm" : "Đã nghỉ"}
@@ -112,6 +112,7 @@ function StaffList() {
               ></Button>
           </Popconfirm>
         </Space>
+
       ),
     },
   ];
@@ -128,9 +129,6 @@ function StaffList() {
     onSuccess: () => {
       toast.success("Xóa thành công")
       queryClient.invalidateQueries({ queryKey: ["staffs"] });
-    },
-    onError: (error: any) => {
-      toast.error("Xóa thất bại: "+ error)
     }
   });
 
@@ -148,14 +146,14 @@ function StaffList() {
   };
 
 
-  const handleFinish = (values: any) => {
+  const handleFinish = (values: Record<string, unknown>) => {
 
     const newFilter: FilterType = {
       currentPage: 1,
       pageSize: 10,
-      search: values.search || undefined,
-      role: values.role || undefined,
-      status: values.status ?? undefined,
+      search: values.search as string | undefined,
+      role: values.role as USER_ROLE | undefined,
+      status: values.status as STAFF_STATUS | undefined,
     };
     setFilter(newFilter);
   }
@@ -208,20 +206,16 @@ function StaffList() {
           </Col>
 
           {/* Nút tìm kiếm */}
-          <Col span={4} style={{ display: "flex", alignItems: "flex-end" }}>
+          <Col span={4} style={{ display: "flex", alignItems: "center", paddingTop: 28 }}>
             <Form.Item>
-              <Button
-                type="primary"
-                htmlType="submit"
-                icon={<SearchOutlined />}
-              >
-                Lọc
-              </Button>
-              <Button
-                htmlType="button"
-                onClick={handleReset}
-                style={{ marginLeft: 8 }}
-              >Đặt lại</Button>
+              <Space>
+                <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
+                  Lọc
+                </Button>
+                <Button onClick={handleReset}>
+                  Đặt lại
+                </Button>
+              </Space>
             </Form.Item>
           </Col>
         </Row>

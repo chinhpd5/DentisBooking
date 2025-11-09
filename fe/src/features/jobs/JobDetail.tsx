@@ -39,8 +39,8 @@ function JobDetail() {
         <Descriptions.Item label="Tên công việc">{job.name}</Descriptions.Item>
         <Descriptions.Item label="Thời gian">{formatTime(job.time)}</Descriptions.Item>
         <Descriptions.Item label="Lần đầu">
-          <Tag color={job.isFrist ? 'blue' : 'default'}>
-            {job.isFrist ? 'Có' : 'Không'}
+          <Tag color={job.isFirst ? 'blue' : 'default'}>
+            {job.isFirst ? 'Có' : 'Không'}
           </Tag>
         </Descriptions.Item>
         <Descriptions.Item label="Mô tả">

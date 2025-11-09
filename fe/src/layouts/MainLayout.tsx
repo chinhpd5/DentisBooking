@@ -15,7 +15,8 @@ import {
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Button, Menu, Popconfirm } from "antd";
-import '../assets/layout.css';
+import logoImage from "../assets/logo.jpg";
+import "../assets/layout.css";
 import { Outlet } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -31,11 +32,10 @@ const items: MenuItem[] = [
     key: "booking",
     label: "Quản lý đặt lịch",
     icon: <ScheduleOutlined />,
-  },
-  {
-    key: "dashboard",
-    label: "Báo cáo",
-    icon: <AreaChartOutlined />,
+    children: [
+      {key: "booking-list", label: "Danh sách Đặt lịch", icon: <UnorderedListOutlined />},
+      {key: "booking-add", label: "Thêm mới Đặt lịch", icon: <PlusOutlined />}
+    ]
   },
   {
     key: "staff",
@@ -73,6 +73,11 @@ const items: MenuItem[] = [
       {key: "seat-add", label: "Thêm mới Ghế", icon: <PlusOutlined />},
       {key: "location-list", label: "Quản lý tầng", icon: <UnorderedListOutlined />},
     ]
+  },
+  {
+    key: "dashboard",
+    label: "Báo cáo",
+    icon: <AreaChartOutlined />,
   },
   {
     key: "user",
@@ -133,12 +138,21 @@ function MainLayout() {
         case 'seat-add':
           naviagte('/seat/add')
           break;
-          case 'customer-list':
-            naviagte('/customer')
-            break;
-          case 'customer-add':
-            naviagte('/customer/add')
-            break;
+        case 'customer-list':
+          naviagte('/customer')
+          break;
+        case 'customer-add':
+          naviagte('/customer/add')
+          break;
+        case 'booking-list':
+          naviagte('/booking')
+          break;
+        case 'booking-add':
+          naviagte('/booking/add')
+          break;
+        case 'home':
+          naviagte('/')
+          break;
     }
     }else{
       naviagte('not-found')
@@ -152,7 +166,10 @@ function MainLayout() {
   return (
     <div className="wrapper">
       <aside  className="sidebar">
-        <h3 className="title">Booking Dentis</h3>
+        <div className="branding">
+          <img src={logoImage} alt="logo" className="logo" />
+          <h3 className="title">Đặt lịch Xiêm Anh</h3>
+        </div>
         <Menu
           onClick={onClick}
           style={{ width: 250 }}

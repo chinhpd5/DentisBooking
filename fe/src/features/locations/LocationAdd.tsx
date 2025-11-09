@@ -18,10 +18,10 @@ function LocationAdd() {
       form.resetFields();
       navigate("/location");
     },
-    onError: (err: unknown) => {
-      const error = err as { response?: { data?: { message?: string } } };
-      Toast.error("Thêm tầng thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (err: unknown) => {
+    //   const error = err as { response?: { data?: { message?: string } } };
+    //   Toast.error("Thêm tầng thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const onFinish = (values: CreateLocation) => {
@@ -37,7 +37,7 @@ function LocationAdd() {
       <h2>Thêm mới tầng</h2>
 
       <Flex justify="center">
-        <div style={{ minWidth: 1000 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
@@ -60,13 +60,13 @@ function LocationAdd() {
               </Col>
             </Row>
 
-            <Row justify="end">
+            <Row justify="start">
               <Form.Item>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
                     Thêm mới
                   </Button>
-                  <Button onClick={onReset}>Reset</Button>
+                  <Button onClick={onReset}>Nhập lại</Button>
                 </Space>
               </Form.Item>
             </Row>

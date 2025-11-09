@@ -1,4 +1,4 @@
-import { CreateCustomer } from "../types/ICustomer";
+import { CreateCustomer } from "../types/customer";
 import axiosInstance from "./axiosInstance";
 
 export const getListCustomer = async (page: number, limit: number, search: string | undefined) => {
@@ -21,4 +21,9 @@ export const updateCustomer = (id: string, data: Partial<CreateCustomer>) =>
 
 export const deleteCustomer = (id: string) => 
   axiosInstance.delete(`/customer/${id}`);
+
+export const getCustomerByPhone = async (phone: string) => {
+  const { data } = await axiosInstance.get(`/customer/phone/${phone}`);
+  return data.data;
+};
 
