@@ -49,7 +49,40 @@ app.get('/',(request, response)=>{
   return response.send("Hello world")
 })
 
+// Middleware để đảm bảo API response luôn là JSON
+app.use("/api", (req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
 app.use("/api", routers);
+
+// 404 handler - phải đặt sau tất cả routes
+app.use((req, res, next) => {
+  return res.status(404).json({
+    success: false,
+    message: 'Route not found',
+    path: req.originalUrl
+  });
+});
+
+// Global error handler - phải đặt cuối cùng
+app.use((err, req, res, next) => {
+  console.error('Error occurred:', err);
+  
+  // Đảm bảo không gửi response nếu headers đã được gửi
+  if (res.headersSent) {
+    return next(err);
+  }
+  
+  const statusCode = err.statusCode || err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  return res.status(statusCode).json({
+    success: false,
+    message: message,
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
 
 const port = process.env.PORT || 3000
 app.listen(port, () => {

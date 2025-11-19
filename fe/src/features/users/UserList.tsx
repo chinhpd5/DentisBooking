@@ -120,7 +120,7 @@ function UserList() {
           <Popconfirm
             title="Xác nhận xóa"
             description="Bạn có chắc chắn muốn xóa không?"
-            onConfirm={() => confirm(item._id)}
+            onConfirm={() => handleDelete(item._id)}
             okText="Xác nhận"
             cancelText="Không"
             icon={<QuestionCircleOutlined style={{ color: 'red' }} />}

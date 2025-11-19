@@ -155,35 +155,35 @@ export const updateEmployee = async (req, res) => {
       });
     }
 
-    if (email) {
-      const duplicateEmail = await Staff.findOne({
-        _id: { $ne: req.params.id },
-        isDeleted: IS_DELETED.NO,
-        email,
-      });
+    // if (email) {
+    //   const duplicateEmail = await Staff.findOne({
+    //     _id: { $ne: req.params.id },
+    //     isDeleted: IS_DELETED.NO,
+    //     email,
+    //   });
 
-      if (duplicateEmail) {
-        return res.status(400).json({
-          success: false,
-          message: "Email đã tồn tại trong hệ thống",
-        });
-      }
-    }
+    //   if (duplicateEmail) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Email đã tồn tại trong hệ thống",
+    //     });
+    //   }
+    // }
 
-    if (phone) {
-      const duplicatePhone = await Staff.findOne({
-        _id: { $ne: req.params.id },
-        isDeleted: IS_DELETED.NO,
-        phone,
-      });
+    // if (phone) {
+    //   const duplicatePhone = await Staff.findOne({
+    //     _id: { $ne: req.params.id },
+    //     isDeleted: IS_DELETED.NO,
+    //     phone,
+    //   });
 
-      if (duplicatePhone) {
-        return res.status(400).json({
-          success: false,
-          message: "Số điện thoại đã tồn tại trong hệ thống",
-        });
-      }
-    }
+    //   if (duplicatePhone) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Số điện thoại đã tồn tại trong hệ thống",
+    //     });
+    //   }
+    // }
 
     const updatePayload = {
       ...rest,

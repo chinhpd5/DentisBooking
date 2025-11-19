@@ -6,6 +6,13 @@ const type = "trick";
 export const createTrick = async (req, res) => {
   try {
     const data = req.body;
+    const existingTrick = await Service.findOne({ name: data.name });
+    if (existingTrick) {
+      return res.status(400).json({
+        success: false,
+        message: "Thủ thuật đã tồn tại",
+      });
+    }
     const newTrick = await Service.create({ ...data, type });
     res.status(201).json({
       success: true,

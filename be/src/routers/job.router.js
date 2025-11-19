@@ -15,17 +15,19 @@ import {
   createJobSchema,
   updateJobSchema
 } from "../validations/job.validate";
-import { checkAuth, checkAdminStaff } from "../middlewares/checkAuth";
+import { checkAuth, checkAdmin } from "../middlewares/checkAuth";
 
 const router = express.Router();
 
-router.use(checkAuth, checkAdminStaff);
+router.use(checkAuth);
 
-router.post("/", validateRequest(createJobSchema), createJob);
 router.get("/", getListJob);
 router.get("/all", getAllJob);
 router.get("/first", getAllJobIsFirst);
 router.get("/:id", getByIdJob);
+
+router.use(checkAdmin);
+router.post("/", validateRequest(createJobSchema), createJob);
 router.put("/:id", validateRequest(updateJobSchema), updateJob);
 router.patch("/:id/status", updateJobStatus);
 router.delete("/:id", softDeleteJob);

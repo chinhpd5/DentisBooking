@@ -2,6 +2,51 @@ import BookingStaff from '../models/bookingStaff.model';
 import Booking from '../models/booking.model';
 import Staff from '../models/staff.model';
 
+// Helper function to check if timeEnd falls during break time based on staff schedule
+const isTimeEndDuringBreak = async (timeEnd, staffId) => {
+  const timeEndDate = new Date(timeEnd);
+  const timeEndHours = timeEndDate.getHours();
+  const timeEndMinutes = timeEndDate.getMinutes();
+  const dayOfWeek = timeEndDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  
+  // Convert to minutes since midnight for easier comparison
+  const timeEndInMinutes = timeEndHours * 60 + timeEndMinutes;
+  
+  // Get staff schedule
+  const staff = await Staff.findById(staffId);
+  if (!staff) {
+    return false; // If no staff found, don't block
+  }
+  
+  // Map day of week to schedule field name
+  const dayScheduleMap = {
+    0: 'scheduleSunday',
+    1: 'scheduleMonday',
+    2: 'scheduleTuesday',
+    3: 'scheduleWednesday',
+    4: 'scheduleThursday',
+    5: 'scheduleFriday',
+    6: 'scheduleSaturday'
+  };
+  
+  const scheduleFieldName = dayScheduleMap[dayOfWeek];
+  const daySchedule = staff[scheduleFieldName];
+  
+  if (!daySchedule) {
+    return false; // If no schedule for this day, don't block
+  }
+  
+  // Check if timeEnd falls between morning.end and afternoon.start (break time)
+  const morningEnd = daySchedule.morning?.end;
+  const afternoonStart = daySchedule.afternoon?.start;
+  
+  if (morningEnd !== undefined && afternoonStart !== undefined) {
+    return timeEndInMinutes > morningEnd && timeEndInMinutes < afternoonStart;
+  }
+  
+  return false;
+};
+
 export const createBookingStaff = async (req, res) => {
   try {
     const { bookingId, staffId } = req.body;
@@ -24,6 +69,14 @@ export const createBookingStaff = async (req, res) => {
     }
     if (!staff) {
       return res.status(400).json({ success: false, message: 'Không tìm thấy nhân sự' });
+    }
+
+    // Kiểm tra thời gian kết thúc của booking có nằm trong giờ nghỉ của staff không
+    if (booking.timeEnd && await isTimeEndDuringBreak(booking.timeEnd, staffId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thời gian kết thúc của lịch hẹn không được nằm trong giờ nghỉ của nhân viên',
+      });
     }
 
     const doc = await BookingStaff.create({ bookingId, staffId });

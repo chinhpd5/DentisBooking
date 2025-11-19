@@ -19,11 +19,11 @@ const router = express.Router();
 router.use(checkAuth);
 router.get("/", getAllSeats);
 router.get("/:id", getSeatById);
+router.patch("/:id/status", updateSeatStatus);
 
 router.use(checkAdmin);
 router.post("/", validateRequest(createSeatSchema), createSeat);
 router.put("/:id", validateRequest(updateSeatSchema), updateSeat);
 router.delete("/:id", hardDeleteSeat);
-router.patch("/:id/status", updateSeatStatus);
 
 export default router;

@@ -126,20 +126,20 @@ export const updateSeat = async (req, res) => {
       });
     }
 
-    if (name) {
-      const duplicateSeat = await Seat.findOne({
-        _id: { $ne: seatId },
-        name,
-        ...(Seat.schema.path("isDeleted") ? { isDeleted: IS_DELETED.NO } : {}),
-      });
+    // if (name) {
+    //   const duplicateSeat = await Seat.findOne({
+    //     _id: { $ne: seatId },
+    //     name,
+    //     ...(Seat.schema.path("isDeleted") ? { isDeleted: IS_DELETED.NO } : {}),
+    //   });
 
-      if (duplicateSeat) {
-        return res.status(400).json({
-          success: false,
-          message: "Tên ghế đã tồn tại trong hệ thống",
-        });
-      }
-    }
+    //   if (duplicateSeat) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Tên ghế đã tồn tại trong hệ thống",
+    //     });
+    //   }
+    // }
 
     const updatePayload = {
       ...rest,

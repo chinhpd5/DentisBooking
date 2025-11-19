@@ -50,10 +50,10 @@ function JobList() {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["jobs"] });
     },
-    onError: (error: unknown) => {
-      const errorMessage = error as { message?: string };
-      toast.error("Xóa thất bại: " + errorMessage.message);
-    },
+    // onError: (error: unknown) => {
+    //   const errorMessage = error as { message?: string };
+    //   toast.error("Xóa thất bại: " + errorMessage.message);
+    // },
   });
 
   const handleDelete = (id: string) => {
@@ -155,7 +155,7 @@ function JobList() {
           <Popconfirm
             title="Xác nhận xóa"
             description="Bạn có chắc chắn muốn xóa không?"
-            onConfirm={() => confirm(item._id)}
+            onConfirm={() => handleDelete(item._id)}
             okText="Xác nhận"
             cancelText="Không"
             icon={<QuestionCircleOutlined style={{ color: 'red' }} />}

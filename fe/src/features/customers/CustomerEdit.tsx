@@ -1,10 +1,10 @@
 import {
   Button,
   Col,
-  DatePicker,
   Flex,
   Form,
   Input,
+  InputNumber,
   Row,
   Select,
   Space,
@@ -15,8 +15,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import Toast from "react-hot-toast";
 import { getCustomerById, updateCustomer } from "../../services/customer";
 import ICustomer, { CreateCustomer } from "../../types/customer";
-import dayjs from "dayjs";
-import type { Dayjs } from "dayjs";
 
 const { Option } = Select;
 
@@ -37,7 +35,7 @@ function CustomerEdit() {
     if (!data) return {};
     return {
       ...data,
-      dateOfBirth: data.dateOfBirth ? dayjs(data.dateOfBirth) : undefined,
+      yearOfBirth: (data as ICustomer & { yearOfBirth?: number }).yearOfBirth,
     };
   };
 
@@ -54,7 +52,7 @@ function CustomerEdit() {
     // },
   });
 
-  const onFinish = (values: Partial<CreateCustomer> & { dateOfBirth?: Dayjs | string }) => {
+  const onFinish = (values: Partial<CreateCustomer> & { yearOfBirth?: number }) => {
     if (id) {
       const submitData: Record<string, unknown> = {};
       if (values.name) submitData.name = values.name;
@@ -62,11 +60,7 @@ function CustomerEdit() {
       if (values.address) submitData.address = values.address;
       if (values.gender) submitData.gender = values.gender;
       if (values.note !== undefined) submitData.note = values.note;
-      if (values.dateOfBirth) {
-        submitData.dateOfBirth = typeof values.dateOfBirth !== 'string' 
-          ? dayjs(values.dateOfBirth).toISOString() 
-          : values.dateOfBirth;
-      }
+      if (values.yearOfBirth !== undefined) submitData.yearOfBirth = values.yearOfBirth;
       mutate({ id, data: submitData as Partial<CreateCustomer> });
     }
   };
@@ -137,13 +131,26 @@ function CustomerEdit() {
                 </Form.Item>
 
                 <Form.Item
-                  name="dateOfBirth"
-                  label="Ngày sinh"
+                  name="yearOfBirth"
+                  label="Năm sinh"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const currentYear = new Date().getFullYear();
+                        if (value < 1900 || value > currentYear - 1) {
+                          return Promise.reject(new Error("Năm sinh phải lớn hơn 1 tuổi và hợp lệ"));
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                 >
-                  <DatePicker
+                  <InputNumber
                     style={{ width: "100%" }}
-                    placeholder="Chọn ngày sinh"
-                    format="DD/MM/YYYY"
+                    placeholder="Nhập năm sinh"
+                    min={1900}
+                    max={new Date().getFullYear() - 1}
                   />
                 </Form.Item>
 

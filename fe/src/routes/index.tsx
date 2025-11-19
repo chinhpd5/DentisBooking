@@ -35,6 +35,7 @@ import BookingAdd from "../features/bookings/BookingAdd";
 import BookingList from "../features/bookings/BookingList";
 import BookingEdit from "../features/bookings/BookingEdit";
 import BookingDetail from "../features/bookings/BookingDetail";
+import Dashboard from "../pages/Dashboard";
 
 const router = createBrowserRouter([
   {
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
     element: <MainLayout />,
     children: [
       {path:"", element: <Home />},
+      { path: "dashboard", element: <Dashboard/>},
       { 
         path: "user", children: [
           { path: "", element: <UserList/> },
@@ -109,7 +111,7 @@ const router = createBrowserRouter([
     ],
   },
   { path: "/login", element: <Login />},
-  { path: "/unauthorized", element: <Uauthorized/>}
+  { path: "/unauthorized", element: <Uauthorized/>},
 
 ]);
 

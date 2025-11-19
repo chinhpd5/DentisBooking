@@ -1,4 +1,4 @@
-import { Modal, Tag, message, TimePicker, Form } from "antd";
+import { Modal, Tag, message, TimePicker, Form, Table } from "antd";
 import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { getAllStaff } from "../services/staff";
@@ -39,13 +39,23 @@ interface TimeSlot {
   index: number;
 }
 
+type BookingStaffAssignment = (NonNullable<IBooking["staffAssignments"]>[number]) & {
+  bookingId?: IBooking | string;
+  _id?: string;
+};
+
 interface BookingDisplay {
   booking: IBooking;
+  staffId: string;
+  staffRole: USER_ROLE;
   startSlotIndex: number;
   endSlotIndex: number;
   service: IService | null;
   totalDuration: number; // in seconds
   actualEndTime: Dayjs; // Thời gian kết thúc thực tế
+  startTime: Dayjs;
+  type: "doctor" | "assignment";
+  assignment?: BookingStaffAssignment;
 }
 
 const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
@@ -62,20 +72,39 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   } | null>(null);
   const [timeEditModalOpen, setTimeEditModalOpen] = useState(false);
   const [timeEditForm] = Form.useForm();
-  const [pendingTimeValues, setPendingTimeValues] = useState<{
-    startTime: Dayjs | null;
-    endTime: Dayjs | null;
-  } | null>(null);
+  const [pendingStartTime, setPendingStartTime] = useState<Dayjs | null>(null);
+  const minStartTime = useMemo(() => pendingStartTime, [pendingStartTime]);
+
+  const disabledStartHours = useCallback(() => {
+    if (!minStartTime) return [];
+    const minHour = minStartTime.hour();
+    return Array.from({ length: minHour }, (_, i) => i);
+  }, [minStartTime]);
+
+  const disabledStartMinutes = useCallback(
+    (selectedHour: number) => {
+      if (!minStartTime) return [];
+      const minHour = minStartTime.hour();
+      if (selectedHour < minHour) {
+        return Array.from({ length: 60 }, (_, i) => i);
+      }
+      if (selectedHour === minHour) {
+        const minMinute = minStartTime.minute();
+        return Array.from({ length: minMinute }, (_, i) => i);
+      }
+      return [];
+    },
+    [minStartTime]
+  );
 
   // Khi modal mở, set lại giá trị form nếu có pending values
   useEffect(() => {
-    if (timeEditModalOpen && pendingTimeValues) {
+    if (timeEditModalOpen && pendingStartTime) {
       timeEditForm.setFieldsValue({
-        startTime: pendingTimeValues.startTime,
-        endTime: pendingTimeValues.endTime,
+        startTime: pendingStartTime,
       });
     }
-  }, [timeEditModalOpen, pendingTimeValues, timeEditForm]);
+  }, [timeEditModalOpen, pendingStartTime, timeEditForm]);
 
   // Helper function để chuyển đổi số thứ sang tên thứ trong tiếng Việt
   const getDayName = (date: Dayjs): string => {
@@ -141,6 +170,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     
     return false;
   }, [service]);
+
 
   // Lọc ra bác sĩ và kỹ thuật viên có thể thực hiện service và có ca làm việc
   const staffList = useMemo(() => {
@@ -210,19 +240,19 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   const { data: bookingsData } = useQuery({
     queryKey: ["bookings", fromDate, toDate],
     queryFn: () =>
-      getListBooking(1, 1000, undefined, undefined, undefined, fromDate, toDate),
+      getListBooking(1, 1000, undefined, undefined, undefined, undefined, fromDate, toDate),
     enabled: open && !!selectedDate,
   });
 
   // Tính toán thời gian tổng cộng của service (service.time + sum of job.time)
-  const calculateServiceDuration = (service: IService): number => {
-    if (!service) return 0;
-    let total = service.time || 0; // service.time là seconds
-    if (service.jobIds && service.jobIds.length > 0) {
-      total += service.jobIds.reduce((sum: number, job: IJob) => sum + (job.time || 0), 0);
+  const calculateServiceDuration = useCallback((serviceData?: IService | null): number => {
+    if (!serviceData) return 0;
+    let total = serviceData.time || 0;
+    if (serviceData.jobIds && serviceData.jobIds.length > 0) {
+      total += serviceData.jobIds.reduce((sum: number, job: IJob) => sum + (job.time || 0), 0);
     }
     return total;
-  };
+  }, []);
 
   // Lấy service info cho mỗi booking
   const { data: servicesMap = new Map() } = useQuery({
@@ -264,96 +294,174 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       
       if (!booking.appointmentDate) return;
       
-      const staffId = booking.doctorId 
-        ? (typeof booking.doctorId === "string" ? booking.doctorId : booking.doctorId._id)
-        : null;
+      const doctorId =
+        booking.doctorId
+          ? ((booking.doctorId as IStaff)?._id || (typeof booking.doctorId === "string" ? booking.doctorId : undefined))
+          : undefined;
       
-      if (!staffId) return;
+      if (doctorId) {
+        const appointmentTime = dayjs(booking.appointmentDate);
+        const serviceId = typeof booking.serviceId === "string" 
+          ? booking.serviceId 
+          : booking.serviceId?._id;
+        const service = serviceId ? servicesMap.get(serviceId) : null;
+        
+        // Tính thời gian kết thúc
+        const totalDuration = calculateServiceDuration(service);
+        const endTime = appointmentTime.add(totalDuration, "second");
 
-      const appointmentTime = dayjs(booking.appointmentDate);
-      const serviceId = typeof booking.serviceId === "string" 
-        ? booking.serviceId 
-        : booking.serviceId?._id;
-      const service = serviceId ? servicesMap.get(serviceId) : null;
-      
-      // Tính thời gian kết thúc
-      const totalDuration = service ? calculateServiceDuration(service) : 0;
-      const endTime = appointmentTime.add(totalDuration, "second");
+        // Tìm slot index cho thời gian bắt đầu
+        const startSlotIndex = timeSlots.findIndex(
+          (slot) =>
+            appointmentTime.isSameOrAfter(slot.start, "minute") &&
+            appointmentTime.isBefore(slot.end, "minute")
+        );
 
-      // Tìm slot index cho thời gian bắt đầu
-      const startSlotIndex = timeSlots.findIndex(
-        (slot) =>
-          appointmentTime.isSameOrAfter(slot.start, "minute") &&
-          appointmentTime.isBefore(slot.end, "minute")
-      );
+        // Tìm slot index cho thời gian kết thúc
+        const endSlotIndex = timeSlots.findIndex(
+          (slot) =>
+            endTime.isSameOrAfter(slot.start, "minute") &&
+            endTime.isBefore(slot.end, "minute")
+        );
 
-      // Tìm slot index cho thời gian kết thúc
-      const endSlotIndex = timeSlots.findIndex(
-        (slot) =>
-          endTime.isSameOrAfter(slot.start, "minute") &&
-          endTime.isBefore(slot.end, "minute")
-      );
+        if (startSlotIndex >= 0) {
+          displays.push({
+            booking,
+            staffId: doctorId,
+            staffRole: (booking.doctorId as IStaff)?.role || USER_ROLE.DOCTOR,
+            startSlotIndex,
+            endSlotIndex: endSlotIndex >= 0 ? endSlotIndex : timeSlots.length - 1,
+            service,
+            totalDuration,
+            actualEndTime: endTime, // Lưu thời gian kết thúc thực tế
+            startTime: appointmentTime,
+            type: "doctor",
+          });
+        }
+      }
 
-      if (startSlotIndex >= 0) {
-        displays.push({
-          booking,
-          startSlotIndex,
-          endSlotIndex: endSlotIndex >= 0 ? endSlotIndex : timeSlots.length - 1,
-          service,
-          totalDuration,
-          actualEndTime: endTime, // Lưu thời gian kết thúc thực tế
+      if (booking.staffAssignments && booking.staffAssignments.length > 0) {
+        booking.staffAssignments.forEach((assignment) => {
+          const assignmentStaffId = assignment.staffId?._id;
+          if (!assignmentStaffId) return;
+
+          const assignmentStart = dayjs(assignment.timeStart);
+          const assignmentEnd = dayjs(assignment.timeEnd);
+
+          const assignmentStartSlot = timeSlots.findIndex(
+            (slot) =>
+              assignmentStart.isSameOrAfter(slot.start, "minute") &&
+              assignmentStart.isBefore(slot.end, "minute")
+          );
+
+          const assignmentEndSlot = timeSlots.findIndex(
+            (slot) =>
+              assignmentEnd.isSameOrAfter(slot.start, "minute") &&
+              assignmentEnd.isBefore(slot.end, "minute")
+          );
+
+          if (assignmentStartSlot >= 0) {
+            displays.push({
+              booking,
+              staffId: assignmentStaffId,
+              staffRole: assignment.staffId?.role || USER_ROLE.STAFF,
+              startSlotIndex: assignmentStartSlot,
+              endSlotIndex: assignmentEndSlot >= 0 ? assignmentEndSlot : timeSlots.length - 1,
+              service: null,
+              totalDuration: Math.max(0, assignmentEnd.diff(assignmentStart, "second")),
+              actualEndTime: assignmentEnd,
+              startTime: assignmentStart,
+              type: "assignment",
+              assignment,
+            });
+          }
         });
       }
     });
 
     return displays;
-  }, [bookingsData?.data, timeSlots, servicesMap]);
+  }, [bookingsData?.data, timeSlots, servicesMap, calculateServiceDuration]);
 
   // Map bookings theo staffId để dễ truy vấn
   const bookingsByStaff = useMemo(() => {
     const map = new Map<string, BookingDisplay[]>();
     bookingDisplays.forEach((display) => {
-      const staffId = display.booking.doctorId 
-        ? (typeof display.booking.doctorId === "string" 
-            ? display.booking.doctorId 
-            : display.booking.doctorId._id)
-        : null;
-      if (staffId) {
-        if (!map.has(staffId)) {
-          map.set(staffId, []);
-        }
-        map.get(staffId)!.push(display);
+      const staffId = display.staffId;
+      if (!map.has(staffId)) {
+        map.set(staffId, []);
       }
+      map.get(staffId)!.push(display);
     });
+
+    map.forEach((displays) => {
+      displays.sort((a, b) => a.startTime.valueOf() - b.startTime.valueOf());
+    });
+
     return map;
   }, [bookingDisplays]);
 
+  const getDisplayRowSpan = useCallback((display: BookingDisplay): number => {
+    let span = 0;
+    for (let idx = display.startSlotIndex; idx <= display.endSlotIndex; idx++) {
+      const slot = timeSlots[idx];
+      if (!slot) break;
+      if (idx === display.endSlotIndex && display.actualEndTime.isBefore(slot.end, "minute")) {
+        break;
+      }
+      span++;
+    }
+    return Math.max(1, span);
+  }, [timeSlots]);
+
+  const getDisplayStartRow = useCallback((display: BookingDisplay): number => {
+    return display.startSlotIndex;
+  }, []);
+
+  const getDisplaysStartingAtSlot = useCallback((staffId: string, slotIndex: number): BookingDisplay[] => {
+    return bookingDisplays
+      .filter(
+        (display) =>
+          display.staffId === staffId &&
+          getDisplayStartRow(display) === slotIndex
+      )
+      .sort((a, b) => a.startTime.valueOf() - b.startTime.valueOf());
+  }, [bookingDisplays, getDisplayStartRow]);
+
+  const hasContinuingDisplays = useCallback((staffId: string, slotIndex: number): boolean => {
+    return bookingDisplays.some((display) => {
+      if (display.staffId !== staffId) return false;
+      const startRow = getDisplayStartRow(display);
+      const rowSpan = getDisplayRowSpan(display);
+      return startRow < slotIndex && startRow + rowSpan > slotIndex;
+    });
+  }, [bookingDisplays, getDisplayRowSpan, getDisplayStartRow]);
+
   // Kiểm tra xem slot có nằm trong giờ làm việc không
-  const isSlotInWorkingHours = (staff: IStaff, slotIndex: number): boolean => {
+  const isSlotInWorkingHours = useCallback((staff: IStaff, slotIndex: number): boolean => {
     const slot = timeSlots[slotIndex];
     const dayOfWeek = selectedDate.day();
     const daySchedule = getDaySchedule(staff, dayOfWeek);
 
     if (!daySchedule) {
-      return false; // Không có lịch làm việc
+      return false;
     }
 
     const slotStartMinutes = slot.start.hour() * 60 + slot.start.minute();
     const slotEndMinutes = slot.end.hour() * 60 + slot.end.minute();
 
-    // Kiểm tra xem slot có nằm trong buổi sáng hoặc chiều không
-    const isMorning = daySchedule.morning && 
-      slotStartMinutes >= daySchedule.morning.start && 
+    const isMorning =
+      !!daySchedule.morning &&
+      slotStartMinutes >= daySchedule.morning.start &&
       slotEndMinutes <= daySchedule.morning.end;
-    const isAfternoon = daySchedule.afternoon && 
-      slotStartMinutes >= daySchedule.afternoon.start && 
+    const isAfternoon =
+      !!daySchedule.afternoon &&
+      slotStartMinutes >= daySchedule.afternoon.start &&
       slotEndMinutes <= daySchedule.afternoon.end;
 
     return isMorning || isAfternoon;
-  };
+  }, [selectedDate, timeSlots]);
 
-  // Kiểm tra xem slot có bị chiếm bởi booking không (hoàn toàn hoặc một phần)
-  const isSlotOccupied = (staffId: string, slotIndex: number): BookingDisplay | null => {
+  const isSlotOccupied = useCallback((staffId: string, slotIndex: number): BookingDisplay | null => {
     const bookings = bookingsByStaff.get(staffId);
     if (!bookings) return null;
 
@@ -361,39 +469,17 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     if (!slot) return null;
 
     for (const display of bookings) {
-      // Nếu slot nằm trong khoảng booking (từ startSlotIndex đến endSlotIndex)
       if (slotIndex >= display.startSlotIndex && slotIndex <= display.endSlotIndex) {
-        // Kiểm tra xem slot có bị chiếm hoàn toàn hay chỉ một phần
-        // Slot bị chiếm hoàn toàn nếu:
-        // 1. Slot là slot đầu tiên và booking bắt đầu từ đầu slot
-        // 2. Slot là slot ở giữa (không phải đầu và không phải cuối)
-        // 3. Slot là slot cuối và booking kết thúc ở cuối slot (actualEndTime >= slot.end)
-        
-        // Slot chỉ bị chiếm một phần nếu:
-        // - Slot là slot cuối và actualEndTime < slot.end (booking kết thúc ở giữa slot)
-        
-        if (slotIndex === display.endSlotIndex) {
-          // Đây là slot cuối cùng, kiểm tra xem booking có kết thúc ở giữa slot không
-          if (display.actualEndTime.isBefore(slot.end, "minute")) {
-            // Booking kết thúc ở giữa slot, slot chỉ bị chiếm một phần
-            // Trả về null để slot vẫn có thể chọn
-            return null;
-          }
+        if (slotIndex === display.endSlotIndex && display.actualEndTime.isBefore(slot.end, "minute")) {
+          return null;
         }
-        
-        // Slot bị chiếm hoàn toàn
         return display;
       }
     }
     return null;
-  };
+  }, [bookingsByStaff, timeSlots]);
 
-  // Lấy booking display cho một cell cụ thể
-  const getBookingForCell = (staffId: string, slotIndex: number): BookingDisplay | null => {
-    return isSlotOccupied(staffId, slotIndex);
-  };
-
-  const handleCellClick = (staffId: string, slot: TimeSlot) => {
+  const handleCellClick = useCallback((staffId: string, slot: TimeSlot) => {
     const staff = staffMap.get(staffId);
     if (!staff) return;
 
@@ -422,43 +508,52 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     const bookings = bookingsByStaff.get(staffId);
     let previousBookingEndTime: Dayjs | null = null;
     
-    console.log("=== DEBUG: Tìm booking trước đó ===");
-    console.log("StaffId:", staffId);
-    console.log("Slot được chọn:", slot.start.format("DD/MM/YYYY HH:mm"), "-", slot.end.format("DD/MM/YYYY HH:mm"));
-    console.log("Số lượng bookings cho staff:", bookings?.length || 0);
+    // console.log("=== DEBUG: Tìm booking trước đó ===");
+    // console.log("StaffId:", staffId);
+    // console.log("Slot được chọn:", slot.start.format("DD/MM/YYYY HH:mm"), "-", slot.end.format("DD/MM/YYYY HH:mm"));
+    // console.log("Số lượng bookings cho staff:", bookings?.length || 0);
     
     if (bookings && bookings.length > 0) {
       // Tìm booking gần nhất kết thúc trong hoặc trước slot được chọn
       for (const display of bookings) {
         const bookingEndTime = display.actualEndTime;
-        const bookingStartTime = dayjs(display.booking.appointmentDate);
-        
-        console.log("  - Booking:", bookingStartTime.format("DD/MM/YYYY HH:mm"), "->", bookingEndTime.format("DD/MM/YYYY HH:mm"));
+        // const bookingStartTime = dayjs(display.booking.appointmentDate);
+        // console.log("  - Booking:", bookingStartTime.format("DD/MM/YYYY HH:mm"), "->", bookingEndTime.format("DD/MM/YYYY HH:mm"));
         
         // Tìm booking kết thúc trước khi slot kết thúc (bookingEndTime <= slot.end)
         // Mục đích: tìm booking gần nhất kết thúc trong slot hoặc trước slot
         // Ví dụ: booking 10:00-12:10, slot 12:00-12:30 -> dùng 12:10 làm thời gian bắt đầu
         if (bookingEndTime.isBefore(slot.end) || bookingEndTime.isSame(slot.end, "minute")) {
-          console.log("    -> Booking này kết thúc trong/trước slot");
+          // console.log("    -> Booking này kết thúc trong/trước slot");
           // Cập nhật nếu đây là booking gần nhất (kết thúc muộn nhất nhưng <= slot.end)
           if (!previousBookingEndTime || bookingEndTime.isAfter(previousBookingEndTime)) {
             previousBookingEndTime = bookingEndTime;
-            console.log("    -> Cập nhật previousBookingEndTime:", previousBookingEndTime.format("DD/MM/YYYY HH:mm"));
+            // console.log("    -> Cập nhật previousBookingEndTime:", previousBookingEndTime.format("DD/MM/YYYY HH:mm"));
           }
         }
       }
     }
     
     // Debug log
-    if (previousBookingEndTime) {
-      console.log("✓ Tìm thấy booking trước đó kết thúc lúc:", previousBookingEndTime.format("DD/MM/YYYY HH:mm"));
-      console.log("✓ Thời gian bắt đầu sẽ là:", previousBookingEndTime.format("HH:mm"));
-    } else {
-      console.log("✗ Không tìm thấy booking trước đó, dùng thời gian slot:", slot.start.format("HH:mm"));
-    }
+    // if (previousBookingEndTime) {
+    //   console.log("✓ Tìm thấy booking trước đó kết thúc lúc:", previousBookingEndTime.format("DD/MM/YYYY HH:mm"));
+    //   console.log("✓ Thời gian bắt đầu sẽ là:", previousBookingEndTime.format("HH:mm"));
+    // } else {
+    //   console.log("✗ Không tìm thấy booking trước đó, dùng thời gian slot:", slot.start.format("HH:mm"));
+    // }
 
     // Thời gian bắt đầu: nếu có booking trước đó thì dùng thời gian kết thúc của booking đó, nếu không thì dùng thời gian bắt đầu của slot
-    const actualStartTime = previousBookingEndTime || slot.start;
+    let actualStartTime = slot.start;
+
+    if (previousBookingEndTime) {
+      const isEndWithinSlot =
+        previousBookingEndTime.isSame(slot.start, "minute") ||
+        (previousBookingEndTime.isAfter(slot.start, "minute") && previousBookingEndTime.isBefore(slot.end, "minute"));
+
+      if (isEndWithinSlot) {
+        actualStartTime = previousBookingEndTime;
+      }
+    }
     
     // Ước tính thời gian dựa trên service (từ thời gian bắt đầu thực tế)
     const estimatedEndTime = service 
@@ -473,13 +568,8 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     
     // Chỉ set giờ và phút cho TimePicker (không có ngày)
     const startTimeOnly = dayjs().hour(actualStartTime.hour()).minute(actualStartTime.minute()).second(0).millisecond(0);
-    const endTimeOnly = dayjs().hour(estimatedEndTime.hour()).minute(estimatedEndTime.minute()).second(0).millisecond(0);
-    
     // Lưu giá trị để set vào form khi modal mở
-    setPendingTimeValues({
-      startTime: startTimeOnly,
-      endTime: endTimeOnly,
-    });
+    setPendingStartTime(startTimeOnly);
     
     // Reset form trước khi set giá trị mới
     timeEditForm.resetFields();
@@ -487,11 +577,21 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     // Set giá trị mới ngay lập tức
     timeEditForm.setFieldsValue({
       startTime: startTimeOnly,
-      endTime: endTimeOnly,
     });
     
     setTimeEditModalOpen(true);
-  };
+  }, [
+    bookingsByStaff,
+    calculateServiceDuration,
+    isSlotInWorkingHours,
+    isSlotOccupied,
+    staffMap,
+    service,
+    setPendingStartTime,
+    setSelectedCell,
+    setTimeEditModalOpen,
+    timeEditForm,
+  ]);
 
   const handleConfirmTime = async () => {
     if (!selectedCell) return;
@@ -499,7 +599,6 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     try {
       const values = await timeEditForm.validateFields();
       const startTimePicker = values.startTime as Dayjs;
-      const endTimePicker = values.endTime as Dayjs;
       
       // Combine selectedDate với thời gian từ TimePicker
       const finalStartTime = selectedDate
@@ -508,11 +607,8 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         .second(0)
         .millisecond(0);
       
-      const finalEndTime = selectedDate
-        .hour(endTimePicker.hour())
-        .minute(endTimePicker.minute())
-        .second(0)
-        .millisecond(0);
+      const durationSeconds = service ? calculateServiceDuration(service) : 3600;
+      const finalEndTime = finalStartTime.add(durationSeconds, "second");
       
       const staff = staffMap.get(selectedCell.staffId);
       if (!staff) return;
@@ -594,157 +690,260 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     }
   }, [service]);
 
-  // Render cell cho grid
-  const renderCell = (staffId: string, slotIndex: number) => {
-    const staff = staffMap.get(staffId);
-    if (!staff) return null;
+  const tableColumns = useMemo(() => {
+    const baseColumns = [
+      {
+        title: "Thời gian",
+        dataIndex: "time",
+        key: "time",
+        width: 100,
+        align: "center" as const,
+        fixed: "left" as const,
+        render: (time: string) => (
+          <div style={{ whiteSpace: "nowrap", fontWeight: "bold" }}>{time}</div>
+        ),
+      },
+    ];
 
-    const bookingDisplay = getBookingForCell(staffId, slotIndex);
-    const isInWorkingHours = isSlotInWorkingHours(staff, slotIndex);
-    const slot = timeSlots[slotIndex];
-
-    // Nếu có booking và đây là slot đầu tiên của booking
-    if (bookingDisplay && bookingDisplay.startSlotIndex === slotIndex) {
-      const booking = bookingDisplay.booking;
-      const serviceInfo = bookingDisplay.service;
-      const customerName = typeof booking.customerId === "string"
-              ? ""
-              : booking.customerId?.name || "";
-      
-      const serviceName = serviceInfo?.name || "";
-      const serviceType = serviceInfo?.type;
-      const typeLabel = serviceType ? getServiceType(serviceType) : "";
-      
-      // Lấy tên các job nếu có
-      const jobNames: string[] = [];
-      if (serviceInfo?.jobIds && serviceInfo.jobIds.length > 0) {
-        serviceInfo.jobIds.forEach((job: IJob) => {
-          if (job.name) jobNames.push(job.name);
-        });
-      }
-
-      const startTime = dayjs(booking.appointmentDate);
-      const actualEndTime = bookingDisplay.actualEndTime;
-      
-      // Tính số slot bị chiếm hoàn toàn
-      // Chỉ tính các slot bị chiếm hoàn toàn, không tính slot cuối nếu chỉ bị chiếm một phần
-      let fullSlotsCount = 0;
-      for (let i = bookingDisplay.startSlotIndex; i <= bookingDisplay.endSlotIndex; i++) {
-        const checkSlot = timeSlots[i];
-        if (!checkSlot) break;
-        
-        // Nếu là slot cuối cùng và booking kết thúc ở giữa slot, không tính slot này
-        if (i === bookingDisplay.endSlotIndex && actualEndTime.isBefore(checkSlot.end, "minute")) {
-          break;
-        }
-        fullSlotsCount++;
-      }
-      
-      const span = fullSlotsCount;
-
-      return (
-        <div
-          key={`${staffId}-${slotIndex}`}
-          style={{
-            gridRow: `span ${span}`,
-            backgroundColor: "#f0f0f0",
-            padding: "8px",
-            borderRadius: 4,
-            fontSize: 12,
-            color: "#666",
-            border: "1px solid #d9d9d9",
-            cursor: "not-allowed",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "flex-start",
-            minHeight: `${span * 100}px`,
-            position: "relative",
-            zIndex: 1,
-          }}
-        >
-          <div style={{ fontWeight: "bold", marginBottom: 4 }}>{serviceName}</div>
-          {jobNames.length > 0 && (
-            <div style={{ fontSize: 10, marginBottom: 4, color: "#888" }}>
-              {jobNames.join(", ")}
-            </div>
-          )}
-          {typeLabel && (
-            <div style={{ marginBottom: 4 }}>
-              <Tag color={serviceType === "job" ? "blue" : "purple"} style={{ fontSize: 10 }}>
-                {typeLabel}
-              </Tag>
-            </div>
-          )}
-          <div style={{ fontSize: 10, marginBottom: 2 }}>
-            {startTime.format("HH:mm")} - {actualEndTime.format("HH:mm")}
-          </div>
-          {customerName && (
-            <div style={{ fontSize: 10, wordBreak: "break-word", color: "#999", marginTop: 2 }}>
-              {customerName}
-            </div>
-          )}
+    const staffColumns = staffList.map((staff: IStaff) => ({
+      title: (
+        <div>
+          <div>{staff.name}</div>
+          <Tag color={staff.role === USER_ROLE.DOCTOR ? "blue" : "cyan"} style={{ marginTop: 4 }}>
+            {convertNameRole(staff.role)}
+          </Tag>
         </div>
-      );
-    }
+      ),
+      key: staff._id,
+      align: "center" as const,
+      render: (_: unknown, record: { slotIndex: number; slot: TimeSlot }) => {
+        const items = getDisplaysStartingAtSlot(staff._id, record.slotIndex);
 
-    // Nếu slot nằm trong một booking nhưng không phải slot đầu tiên
-    // Logic này đã được xử lý ở phần render grid, nên ở đây không cần xử lý nữa
-    // Nếu đến được đây nghĩa là slot không bị chiếm hoàn toàn hoặc không có booking
-
-    // Cell trống hoặc có thể chọn
-    const canSelect = isInWorkingHours && !bookingDisplay;
-
-        return (
-          <div
-        key={`${staffId}-${slotIndex}`}
-        onClick={() => canSelect && handleCellClick(staffId, slot)}
-            style={{
-          backgroundColor: canSelect ? "#ffffff" : "#f5f5f5",
-              padding: "8px",
-              borderRadius: 4,
-          minHeight: "100px",
-          cursor: canSelect ? "pointer" : "not-allowed",
-          border: "1px solid #e0e0e0",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: canSelect ? "#333" : "#999",
-              transition: "all 0.2s",
-            }}
-            onMouseEnter={(e) => {
-          if (canSelect) {
-                e.currentTarget.style.backgroundColor = "#e6f7ff";
-                e.currentTarget.style.borderColor = "#1890ff";
-              }
-            }}
-            onMouseLeave={(e) => {
-          if (canSelect) {
-            e.currentTarget.style.backgroundColor = "#ffffff";
-            e.currentTarget.style.borderColor = "#e0e0e0";
+        if (items.length === 0) {
+          if (hasContinuingDisplays(staff._id, record.slotIndex)) {
+            return {
+              children: null,
+              props: { rowSpan: 0 },
+            };
           }
-        }}
-      >
-        {canSelect ? "Có thể chọn" : "Nghỉ làm"}
-          </div>
+
+          const slot = record.slot;
+          const inWorkingHours = isSlotInWorkingHours(staff, record.slotIndex);
+          const occupied = isSlotOccupied(staff._id, record.slotIndex);
+          const canSelect = inWorkingHours && !occupied;
+
+          return {
+            children: (
+              <div
+                onClick={() => canSelect && handleCellClick(staff._id, slot)}
+                style={{
+                  backgroundColor: canSelect ? "#ffffff" : "#f5f5f5",
+                  padding: 8,
+                  borderRadius: 4,
+                  minHeight: 100,
+                  cursor: canSelect ? "pointer" : "not-allowed",
+                  border: "1px solid #e0e0e0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: canSelect ? "#333" : "#999",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  if (canSelect) {
+                    e.currentTarget.style.backgroundColor = "#e6f7ff";
+                    e.currentTarget.style.borderColor = "#1890ff";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (canSelect) {
+                    e.currentTarget.style.backgroundColor = "#ffffff";
+                    e.currentTarget.style.borderColor = "#e0e0e0";
+                  }
+                }}
+              >
+                {canSelect ? "Có thể chọn" : "Nghỉ làm"}
+              </div>
+            ),
+            props: {},
+          };
+        }
+
+        const cellRowSpan = Math.max(
+          ...items.map((display) => getDisplayRowSpan(display)),
+          1
         );
-  };
+
+        // Check if there's remaining time in the slot after the last booking
+        const slot = record.slot;
+        const inWorkingHours = isSlotInWorkingHours(staff, record.slotIndex);
+        const lastDisplay = items[items.length - 1];
+        const hasRemainingTime = lastDisplay && lastDisplay.actualEndTime.isBefore(slot.end, "minute");
+        const canSelectRemaining = hasRemainingTime && inWorkingHours;
+
+        return {
+          children: (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {items.map((display) => {
+                const isAssignment = display.type === "assignment";
+                const booking = display.booking;
+                const assignment = display.assignment;
+                const serviceInfo = display.service;
+                const assignmentBooking =
+                  assignment &&
+                  typeof assignment.bookingId === "object" &&
+                  assignment.bookingId !== null
+                    ? (assignment.bookingId as IBooking)
+                    : null;
+                const serviceName = isAssignment
+                  ? assignment?.serviceIds?.map((svc) => svc.name).filter(Boolean).join(", ") ||
+                    (typeof booking.serviceId === "object" ? booking.serviceId?.name : "") ||
+                    ""
+                  : serviceInfo?.name || "";
+                const jobNames: string[] = [];
+                if (!isAssignment && serviceInfo?.jobIds && serviceInfo.jobIds.length > 0) {
+                  serviceInfo.jobIds.forEach((job: IJob) => {
+                    if (job.name) jobNames.push(job.name);
+                  });
+                }
+                const customerName = isAssignment
+                  ? assignmentBooking?.customerId?.name || assignment?.staffId?.name || ""
+                  : typeof booking.customerId === "string"
+                  ? ""
+                  : booking.customerId?.name || "";
+                const itemRowSpan = getDisplayRowSpan(display);
+                const serviceTypeLabel =
+                  !isAssignment && serviceInfo?.type ? getServiceType(serviceInfo.type) : "";
+
+                return (
+                  <div
+                    key={`${display.staffId}-${display.booking._id}-${display.type}-${assignment?._id || "doctor"}`}
+                    style={{
+                      backgroundColor: isAssignment ? "#f6ffed" : "#e6f7ff",
+                      width: "90%",
+                      maxWidth: 220,
+                      border: `2px solid ${isAssignment ? "#52c41a" : "#1890ff"}`,
+                      borderRadius: 4,
+                      padding: 8,
+                      margin: "2px auto",
+                      cursor: "not-allowed",
+                      minHeight: Math.max(40, itemRowSpan * 30 - 4),
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <div style={{ fontWeight: "bold", fontSize: 12 }}>
+                      {serviceName || "-"}
+                    </div>
+                    {jobNames.length > 0 && (
+                      <div style={{ fontSize: 10, color: "#888" }}>
+                        {jobNames.join(", ")}
+                      </div>
+                    )}
+                    {serviceTypeLabel && (
+                      <div>
+                        <Tag color={serviceInfo?.type === "job" ? "blue" : "purple"} style={{ fontSize: 10 }}>
+                          {serviceTypeLabel}
+                        </Tag>
+                      </div>
+                    )}
+                    <div style={{ fontSize: 10, color: "#666" }}>
+                      {display.startTime.format("HH:mm")} - {display.actualEndTime.format("HH:mm")}
+                    </div>
+                    {customerName && (
+                      <div style={{ fontSize: 10, color: "#999" }}>{customerName}</div>
+                    )}
+                  </div>
+                );
+              })}
+              {canSelectRemaining && (
+                <div
+                  onClick={() => handleCellClick(staff._id, slot)}
+                  style={{
+                    backgroundColor: "#ffffff",
+                    padding: 8,
+                    borderRadius: 4,
+                    minHeight: 60,
+                    cursor: "pointer",
+                    border: "1px solid #e0e0e0",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#333",
+                    transition: "all 0.2s",
+                    marginTop: 4,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = "#e6f7ff";
+                    e.currentTarget.style.borderColor = "#1890ff";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = "#ffffff";
+                    e.currentTarget.style.borderColor = "#e0e0e0";
+                  }}
+                >
+                  Có thể chọn
+                </div>
+              )}
+            </div>
+          ),
+          props: {
+            rowSpan: cellRowSpan,
+          },
+        };
+      },
+    }));
+
+    return [...baseColumns, ...staffColumns];
+  }, [
+    staffList,
+    getDisplaysStartingAtSlot,
+    hasContinuingDisplays,
+    getDisplayRowSpan,
+    isSlotInWorkingHours,
+    isSlotOccupied,
+    handleCellClick,
+  ]);
+
+  const tableDataSource = useMemo(
+    () =>
+      timeSlots.map((slot) => ({
+        key: slot.index,
+        time: slot.label,
+        slotIndex: slot.index,
+        slot,
+      })),
+    [timeSlots]
+  );
 
   return (
     <Modal
       title={
         <div>
-          <div style={{ fontWeight: "bold", fontSize: 16, marginBottom: 8 }}>
-            Chọn lịch hẹn
-            {service && (
-            <h5 style={{ margin: "0 0 8px 0", color: "#0050b3" }}>
-                {service.name}
-              {service.type && (
-                <Tag color={service.type === "job" ? "blue" : "purple"} style={{ marginLeft: 8 }}>
-                  {getServiceType(service.type)}
-                </Tag>
+          <div
+            style={{
+              fontWeight: "bold",
+              fontSize: 16,
+              marginBottom: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              flexWrap: "wrap",
+            }}
+          >
+              <span>Chọn lịch hẹn -</span>
+              {service && (
+                <span style={{ color: "#0050b3", fontWeight: 600, display: "flex", alignItems: "center" }}>
+                  {service.name}
+                  {service.type && (
+                    <Tag color={service.type === "job" ? "blue" : "purple"} style={{ marginLeft: 8 }}>
+                      {getServiceType(service.type)}
+                    </Tag>
+                  )}
+                </span>
               )}
-            </h5>
-            )}
           </div>
           {service && (
             <div style={{ fontSize: 14, color: "#666" }}>
@@ -752,20 +951,20 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                 {/* Cột 1: Thông tin Service */}
                 <div style={{ 
                   backgroundColor: "#e6f7ff", 
-                  padding: "12px", 
+                  padding: "10px", 
                   borderRadius: 6,
                   border: "1px solid #91d5ff"
                 }}>
-                  <h4 style={{ margin: "0 0 8px 0", color: "#1890ff" }}>Thông tin dịch vụ</h4>
+                  <h4 style={{ color: "#1890ff" }}>Thông tin dịch vụ</h4>
         
-                  <div style={{ marginBottom: 8 }}>
+                  <div>
                     {serviceTime.lines.map((line, idx) => (
-                      <div key={idx} style={{ marginBottom: 4, fontSize: 11 }}>
+                      <div key={idx} style={{ fontSize: 11 }}>
                         {line}
                       </div>
                     ))}
                   </div>
-                  <h4 style={{ margin: "8px 0 0 0", color: "#0050b3" }}>
+                  <h4 style={{ color: "#0050b3" }}>
                     Tổng thời gian: <span style={{ color: "#1890ff", fontWeight: "bold" }}>{serviceTime.detail}</span>
                   </h4>
                 </div>
@@ -773,39 +972,42 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                 {/* Cột 2: Thông tin Bác sĩ và KTV (nếu là trick) */}
                 <div style={{ 
                   backgroundColor: service.type === "trick" ? "#f6ffed" : "#fafafa", 
-                  padding: "12px", 
+                  padding: "10px", 
                   borderRadius: 6,
                   border: service.type === "trick" ? "1px solid #b7eb8f" : "1px solid #d9d9d9"
                 }}>
                   {service.type === "trick" ? (
                     <>
-                      <h4 style={{ margin: "0 0 8px 0", color: "#389e0d" }}>Thông tin thực hiện</h4>
+                      <h4 style={{ color: "#389e0d" }}>Thông tin thực hiện</h4>
                       {service.staffIds && service.staffIds.length > 0 && (
-                        <div style={{ marginBottom: 12, display: "flex", gap: 4 }}>
-                          <h5 style={{ margin: "0 0 8px 0", color: "#389e0d" }}>Bác sĩ có thể thực hiện:</h5>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                            {service.staffIds.map((staff: IStaff, idx: number) => (
-                              <Tag key={staff._id || idx} color="cyan">
-                                {staff.name}
-                              </Tag>
-                            ))}
-                          </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, maxWidth: "100%" }}>
+                          <h5 style={{ color: "#389e0d", margin: 0 }}>Bác sĩ có thể thực hiện:</h5>
+                          <span
+                            style={{
+                              color: "#389e0d",
+                              fontWeight: 500,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              flex: 1,
+                            }}
+                            title={service.staffIds.map((staff: IStaff) => staff.name).join(", ")}
+                          >
+                            {service.staffIds.map((staff: IStaff) => staff.name).join(", ")}
+                          </span>
                         </div>
                       )}
                       {service.countStaff !== undefined && service.countStaff !== null && (
                         <div>
-                          <h5 style={{ margin: "0 0 8px 0", color: "#389e0d" }}>
-                            Số lượng KTV:{" "}
-                            <Tag color="orange" style={{ fontSize: 11, padding: "0px 12px" }}>
-                              {service.countStaff}
-                            </Tag>
+                          <h5 style={{ color: "#389e0d" }}>
+                            Số lượng KTV: <span style={{ color: "#ff8c00", fontWeight: 600 }}>{service.countStaff}</span>
                           </h5>
                         </div>
                       )}
                     </>
                   ) : (
                     <div style={{ color: "#8c8c8c", fontStyle: "italic" }}>
-                      <h4 style={{ margin: "0 0 8px 0", color: "#8c8c8c" }}>Thông tin thực hiện</h4>
+                      <h4 style={{ color: "#8c8c8c" }}>Thông tin thực hiện</h4>
                       <h6 style={{ margin: 0, color: "#bfbfbf" }}>Chỉ áp dụng cho thủ thuật</h6>
                     </div>
                   )}
@@ -814,12 +1016,12 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                 {/* Cột 3: Ngày */}
                 <div style={{ 
                   backgroundColor: "#fff7e6", 
-                  padding: "12px", 
+                  padding: "10px", 
                   borderRadius: 6,
                   border: "1px solid #ffd591"
                 }}>
-                  <h4 style={{ margin: "0 0 8px 0", color: "#fa8c16" }}>Thông tin lịch hẹn</h4>
-                  <h5 style={{ margin: "0 0 4px 0", color: "#d46b08" }}>
+                  <h4 style={{ color: "#fa8c16" }}>Thông tin lịch hẹn</h4>
+                  <h5 style={{ color: "#d46b08" }}>
                     Thứ: <span style={{ color: "#fa8c16", fontWeight: "bold" }}>{getDayName(selectedDate)}</span>
                   </h5>
                   <h5 style={{ margin: 0, color: "#d46b08" }}>
@@ -839,9 +1041,9 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       width="95%"
       centered
       style={{ 
-        maxWidth: 1600,
-        top: 0,
-        paddingBottom: 0,
+        maxWidth: 1700,
+        top: 10,
+        paddingBottom: 10,
       }}
       footer={null}
       maskClosable={false}
@@ -850,7 +1052,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       styles={{
         body: {
         padding: "16px",
-        maxHeight: "calc(100vh - 350px)",
+        maxHeight: "calc(100vh - 200px)",
           overflow: "hidden",
           display: "flex",
           flexDirection: "column",
@@ -864,114 +1066,20 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         flex: 1,
         overflow: "hidden",
       }}>
-        {/* Grid Schedule */}
-        <div style={{ 
-          display: "grid",
-          gridTemplateColumns: `120px repeat(${staffList.length}, 1fr)`,
-          gap: "1px",
-          backgroundColor: "#e0e0e0",
-          border: "1px solid #e0e0e0",
-          overflow: "auto",
-          maxHeight: "100%",
-        }}>
-          {/* Header - Time column */}
-          <div style={{
-            backgroundColor: "#fafafa",
-            padding: "12px",
-            fontWeight: "bold",
-            textAlign: "center",
-            position: "sticky",
-            left: 0,
-            zIndex: 20,
-            borderRight: "2px solid #d9d9d9",
-          }}>
-            Thời gian
-          </div>
-
-          {/* Header - Staff columns */}
-          {staffList.map((staff: IStaff, index: number) => (
-            <div
-              key={staff._id}
-              style={{
-                backgroundColor: "#fafafa",
-                padding: "12px",
-                fontWeight: "bold",
-                textAlign: "center",
-                borderBottom: "2px solid #d9d9d9",
-                position: "sticky",
-                top: 0,
-                zIndex: 15,
-                borderLeft: index === 0 ? "1px solid #e0e0e0" : "none",
-              }}
-            >
-              <div>{staff.name}</div>
-              <Tag 
-                color={staff.role === USER_ROLE.DOCTOR ? "blue" : "cyan"} 
-                style={{ marginTop: 4 }}
-              >
-                {convertNameRole(staff.role)}
-              </Tag>
-            </div>
-          ))}
-
-          {/* Time rows */}
-          {timeSlots.map((slot: TimeSlot) => (
-            <React.Fragment key={slot.index}>
-              {/* Time label */}
-              <div
-                style={{
-                  backgroundColor: "#ffffff",
-                  padding: "8px",
-                  textAlign: "center",
-                  fontSize: 12,
-                  position: "sticky",
-                  left: 0,
-                  zIndex: 10,
-                  borderRight: "2px solid #d9d9d9",
-                  minHeight: "100px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                {slot.label}
-              </div>
-
-              {/* Cells for each staff */}
-              {staffList.map((staff: IStaff) => {
-                // Kiểm tra xem có booking nào chiếm slot này không
-                const bookings = bookingsByStaff.get(staff._id);
-                let shouldHide = false;
-                
-                if (bookings) {
-                  for (const display of bookings) {
-                    if (slot.index >= display.startSlotIndex && slot.index <= display.endSlotIndex) {
-                      // Nếu là slot đầu tiên, render booking
-                      if (display.startSlotIndex === slot.index) {
-                        break;
-                      }
-                      // Nếu là slot cuối cùng, kiểm tra xem có bị chiếm hoàn toàn không
-                      if (slot.index === display.endSlotIndex) {
-                        const checkSlot = timeSlots[slot.index];
-                        if (checkSlot && display.actualEndTime.isBefore(checkSlot.end, "minute")) {
-                          // Slot chỉ bị chiếm một phần, không ẩn
-                          break;
-                        }
-                      }
-                      // Slot ở giữa hoặc slot cuối bị chiếm hoàn toàn, ẩn cell
-                      shouldHide = true;
-                      break;
-                    }
-                  }
-                }
-                
-                if (shouldHide) {
-                  return <div key={`${staff._id}-${slot.index}`} style={{ display: "none" }} />;
-                }
-                return renderCell(staff._id, slot.index);
-              })}
-            </React.Fragment>
-          ))}
+        <div style={{ width: "100%", overflowX: "auto", height: "100%" }}>
+          <Table
+            columns={tableColumns}
+            dataSource={tableDataSource}
+            pagination={false}
+            bordered
+            size="small"
+            rowKey="key"
+            tableLayout="fixed"
+            scroll={{
+              x: 120 + staffList.length * 200,
+              y: "calc(100vh - 320px)",
+            }}
+          />
         </div>
 
         {loadingStaff && (
@@ -988,7 +1096,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         onCancel={() => {
           setTimeEditModalOpen(false);
           setSelectedCell(null);
-          setPendingTimeValues(null);
+          setPendingStartTime(null);
           timeEditForm.resetFields();
         }}
         onOk={handleConfirmTime}
@@ -1006,20 +1114,9 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
               format="HH:mm"
               placeholder="Chọn thời gian bắt đầu"
               hourStep={1}
+              disabledHours={disabledStartHours}
+              disabledMinutes={disabledStartMinutes}
               // minuteStep={30}
-            />
-          </Form.Item>
-          <Form.Item
-            name="endTime"
-            label="Thời gian kết thúc (ước tính)"
-            rules={[{ required: true, message: "Vui lòng chọn thời gian kết thúc" }]}
-          >
-            <TimePicker
-              style={{ width: "100%" }}
-              format="HH:mm"
-              placeholder="Chọn thời gian kết thúc"
-              hourStep={1}
-              minuteStep={30}
             />
           </Form.Item>
         </Form>

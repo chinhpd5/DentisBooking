@@ -15,8 +15,16 @@ const customerSchema = new mongoose.Schema({
     type: String,
     required: [true, "Địa chỉ khách hàng là bắt buộc"],
   },
-  dateOfBirth: {
-    type: Date,
+  yearOfBirth: {
+    type: Number,
+    validate: {
+      validator: function(value) {
+        if (!value) return true; // Optional field
+        const currentYear = new Date().getFullYear();
+        return value >= 1900 && value <= (currentYear - 1);
+      },
+      message: "Năm sinh phải lớn hơn 1 tuổi và hợp lệ"
+    }
   },
   gender: {
     type: String,

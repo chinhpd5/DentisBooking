@@ -156,26 +156,38 @@ function TrickAdd() {
               <Col span={12}>
                 <Form.Item
                   name="countStaff"
-                  label="Số lượng KTV đi kèm"
+                  label="Số lượng KTV đi kèm"
                   rules={[
-                    { required: true, message: "Vui lòng nhập Số lượng KTV đi kèm" },
+                    { required: true, message: "Vui lòng nhập Số lượng KTV đi kèm" },
                     { type: "number", min: 0 , message: "Số lượng nhân viên phải lớn hơn hoặc bằng 0" },
                   ]}
                 >
                   <InputNumber
-                    placeholder="Nhập Số lượng KTV đi kèm"
+                    placeholder="Nhập Số lượng KTV đi kèm"
                     style={{ width: "100%" }}
                     min={0}
+                    onChange={() => form.validateFields(["jobIds"])}
                   />
                 </Form.Item>
 
                 <Form.Item
                   name="jobIds"
-                  label="Công việc chuẩn bị"
+                  label="Công việc chuẩn bị"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        const currentCountStaff = form.getFieldValue("countStaff");
+                        if (currentCountStaff >= 1 && (!value || value.length === 0)) {
+                          return Promise.reject(new Error("Vui lòng chọn ít nhất 1 công việc chuẩn bị khi số lượng KTV đi kèm lớn hơn hoặc bằng 1"));
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                 >
                   <Select
                     mode="multiple"
-                    placeholder="Chọn Công việc chuẩn bị"
+                    placeholder="Chọn Công việc chuẩn bị"
                     allowClear
                   >
                     {jobList?.map((job: { _id: string; name: string; time: number }) => (

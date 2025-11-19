@@ -1,4 +1,4 @@
-import { Button, Col, DatePicker, Flex, Form, Input, Row, Select, Space, Card, Divider, message, Modal, Descriptions, Tag } from "antd";
+import { Button, Col, DatePicker, Flex, Form, Input, Row, Select, Space, Card, Divider, message, Modal, Descriptions, Tag, InputNumber } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import Toast from "react-hot-toast";
@@ -56,7 +56,7 @@ function BookingAdd() {
         name: customer.name,
         phone: customer.phone,
         address: customer.address,
-        dateOfBirth: customer.dateOfBirth ? dayjs(customer.dateOfBirth) : undefined,
+        yearOfBirth: customer.yearOfBirth ? dayjs(customer.yearOfBirth) : undefined,
         gender: customer.gender || "other",
         customerNote: customer.note || "",
       });
@@ -69,7 +69,7 @@ function BookingAdd() {
       form.setFieldsValue({
         name: "",
         address: "",
-        dateOfBirth: undefined,
+        yearOfBirth: undefined,
         gender: "other",
         customerNote: "",
       });
@@ -134,13 +134,13 @@ function BookingAdd() {
     let finalCustomerId = customerId;
     
     // Chuẩn hóa dữ liệu customer từ form values
-    const customerData: Omit<CreateCustomer, 'dateOfBirth'> & { dateOfBirth?: string } = {
+    const customerData: Omit<CreateCustomer, 'yearOfBirth'> & { yearOfBirth?: string } = {
       name: values.name as string,
       phone: values.phone as string,
       address: values.address as string,
-      dateOfBirth: values.dateOfBirth && dayjs.isDayjs(values.dateOfBirth)
-        ? values.dateOfBirth.toISOString()
-        : values.dateOfBirth as string | undefined,
+      yearOfBirth: values.yearOfBirth && dayjs.isDayjs(values.yearOfBirth)
+        ? values.yearOfBirth.toISOString()
+        : values.yearOfBirth as string | undefined,
       gender: (values.gender as string) || "other",
       note: (values.customerNote as string) || "",
     };
@@ -155,11 +155,11 @@ function BookingAdd() {
       }
     } else {
       // Kiểm tra xem thông tin khách hàng có thay đổi không
-      const existingDateStr = customerFound?.dateOfBirth 
-        ? dayjs(customerFound.dateOfBirth).startOf('day').toISOString() 
+      const existingDateStr = customerFound?.yearOfBirth 
+        ? dayjs(customerFound.yearOfBirth).startOf('day').toISOString() 
         : '';
-      const newDateStr = customerData.dateOfBirth 
-        ? dayjs(customerData.dateOfBirth).startOf('day').toISOString() 
+      const newDateStr = customerData.yearOfBirth 
+        ? dayjs(customerData.yearOfBirth).startOf('day').toISOString() 
         : '';
       
       const hasChanges = customerFound && (
@@ -176,17 +176,17 @@ function BookingAdd() {
         try {
           // Chuẩn hóa dữ liệu để gửi lên server
           const updateData: Record<string, unknown> = { ...customerData };
-          if (updateData.dateOfBirth) {
-            updateData.dateOfBirth = new Date(customerData.dateOfBirth!);
+          if (updateData.yearOfBirth) {
+            updateData.yearOfBirth = new Date(customerData.yearOfBirth!);
           }
           await updateCustomerMutation.mutateAsync({ id: customerId, data: updateData as Partial<CreateCustomer> });
           // Cập nhật lại customerFound sau khi update
           const updatedCustomer = {
             ...customerFound,
             ...customerData,
-            dateOfBirth: customerData.dateOfBirth ? new Date(customerData.dateOfBirth) : customerFound.dateOfBirth,
+            yearOfBirth: customerData.yearOfBirth ? new Date(customerData.yearOfBirth) : customerFound.yearOfBirth,
           };
-          setCustomerFound(updatedCustomer);
+          setCustomerFound(updatedCustomer as ICustomer);
         } catch {
           return; // Error đã được xử lý trong mutation
         }
@@ -305,7 +305,7 @@ function BookingAdd() {
 
                   {customerFound && (
                     <div style={{ marginBottom: 16, padding: 12, backgroundColor: "#f0f9ff", borderRadius: 4 }}>
-                      <strong>✓ Đã tìm thấy khách hàng</strong>
+                      <strong style={{ color: "#008000" }}>Đã tìm thấy khách hàng</strong>
                     </div>
                   )}
 
@@ -322,13 +322,26 @@ function BookingAdd() {
                   </Form.Item>
 
                   <Form.Item
-                    name="dateOfBirth"
-                    label="Ngày sinh"
+                    name="yearOfBirth"
+                    label="Năm sinh"
+                    rules={[
+                      {
+                        validator: (_, value) => {
+                          if (!value) return Promise.resolve();
+                          const currentYear = new Date().getFullYear();
+                          if (value < 1900 || value > currentYear - 1) {
+                            return Promise.reject(new Error("Năm sinh phải lớn hơn 1 tuổi"));
+                          }
+                          return Promise.resolve();
+                        },
+                      },
+                    ]}
                   >
-                    <DatePicker
+                    <InputNumber
                       style={{ width: "100%" }}
-                      placeholder="Chọn ngày sinh"
-                      format="DD/MM/YYYY"
+                      placeholder="Nhập năm sinh"
+                      min={1900}
+                      // max={new Date().getFullYear() - 1}
                     />
                   </Form.Item>
                 </Col>
@@ -345,10 +358,23 @@ function BookingAdd() {
                   >
                     <Input.TextArea
                       placeholder="Nhập địa chỉ"
-                      rows={4}
+                      rows={5}
                       maxLength={300}
                       showCount
                     />
+                  </Form.Item>
+                  <Form.Item
+                    name="gender"
+                    label="Giới tính"
+                    rules={[
+                      { required: true, message: "Vui lòng chọn giới tính" },
+                    ]}
+                  >
+                    <Select placeholder="Chọn giới tính">
+                      <Option value="male">Nam</Option>
+                      <Option value="female">Nữ</Option>
+                      <Option value="other">Khác</Option>
+                    </Select>
                   </Form.Item>
                 </Col>
               </Row>

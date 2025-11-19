@@ -7,7 +7,6 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import ICustomer from "../../types/customer";
 import IData from "../../types";
-import dayjs from "dayjs";
 
 type FilterType = {
   currentPage: number;
@@ -74,9 +73,9 @@ function CustomerList() {
     { title: "Tên khách hàng", dataIndex: "name" },
     { title: "Số điện thoại", dataIndex: "phone" },
     { title: "Địa chỉ", dataIndex: "address" },
-    { title: "Ngày sinh", dataIndex: "dateOfBirth", 
-      render: (dateOfBirth: Date) => 
-        dateOfBirth ? dayjs(dateOfBirth).format("DD/MM/YYYY") : "-" },
+    { title: "Năm sinh", dataIndex: "yearOfBirth", 
+      render: (yearOfBirth: number) => 
+        yearOfBirth ? yearOfBirth : "-" },
     { title: "Giới tính", dataIndex: "gender", render: (gender: string) => gender === "male" ? "Nam" : gender === "female" ? "Nữ" : "Khác" },
     { title: "Ghi chú", dataIndex: "note" },
     {

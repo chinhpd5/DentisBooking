@@ -1,15 +1,17 @@
 import { Button, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DeleteOutlined, EditOutlined, InfoCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { DeleteOutlined, InfoCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { getListBooking, deleteBooking, updateBookingStatus } from "../../services/booking";
+import { getAllStaff } from "../../services/staff";
 import toast from "react-hot-toast";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import IBooking from "../../types/booking";
 import IData from "../../types";
 import dayjs, { Dayjs } from "dayjs";
-import { BOOKING_STATUS } from "../../contants";
-import { getServiceType } from "../../utils/helper";
+import { BOOKING_STATUS, SERVICE_TYPE, USER_ROLE } from "../../contants";
+import { IStaff } from "../../types/staff";
+import { ColumnType } from "antd/es/table";
 
 const { Option } = Select;
 
@@ -19,6 +21,7 @@ type FilterType = {
   search?: string | undefined;
   status?: BOOKING_STATUS | undefined;
   doctorId?: string | undefined;
+  staffId?: string | undefined;
   fromDate?: string | undefined;
   toDate?: string | undefined;
 };
@@ -54,6 +57,7 @@ function BookingList() {
         filter.search,
         filter.status,
         filter.doctorId,
+        filter.staffId,
         filter.fromDate,
         filter.toDate
       ),
@@ -72,10 +76,10 @@ function BookingList() {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error("Xóa thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (error: unknown) => {
+    //   const err = error as { response?: { data?: { message?: string } } };
+    //   toast.error("Xóa thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const updateStatusMutation = useMutation({
@@ -94,6 +98,16 @@ function BookingList() {
       const err = error as { response?: { data?: { message?: string } } };
       toast.error("Cập nhật trạng thái thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
     },
+  });
+
+  const { data: doctorList, isLoading: isLoadingDoctors } = useQuery<IStaff[]>({
+    queryKey: ["staff", "doctors"],
+    queryFn: () => getAllStaff(USER_ROLE.DOCTOR),
+  });
+
+  const { data: staffList, isLoading: isLoadingStaffs } = useQuery<IStaff[]>({
+    queryKey: ["staff", "ktv"],
+    queryFn: () => getAllStaff(USER_ROLE.STAFF),
   });
 
   const handleDelete = (id: string) => {
@@ -244,8 +258,9 @@ function BookingList() {
     
     // "Đã đặt", "Hủy", "Thay đổi lịch": null (Để trống)
     if (status === BOOKING_STATUS.BOOKED || 
-        status === BOOKING_STATUS.CANCELLED || 
-        status === BOOKING_STATUS.CHANGED) {
+        status === BOOKING_STATUS.CANCELLED
+        // status === BOOKING_STATUS.CHANGED
+      ) {
       return null;
     }
     
@@ -286,6 +301,7 @@ function BookingList() {
     search?: string;
     status?: BOOKING_STATUS;
     doctorId?: string;
+    staffId?: string;
     dateRange?: [Dayjs, Dayjs];
   }) => {
     setFilter({
@@ -294,6 +310,7 @@ function BookingList() {
       search: values.search || undefined,
       status: values.status || undefined,
       doctorId: values.doctorId || undefined,
+      staffId: values.staffId || undefined,
       fromDate: values.dateRange?.[0] ? values.dateRange[0].format("YYYY-MM-DD") : undefined,
       toDate: values.dateRange?.[1] ? values.dateRange[1].format("YYYY-MM-DD") : undefined,
     });
@@ -307,6 +324,7 @@ function BookingList() {
       search: undefined,
       status: undefined,
       doctorId: undefined,
+      staffId: undefined,
       fromDate: undefined,
       toDate: undefined,
     });
@@ -319,7 +337,7 @@ function BookingList() {
       [BOOKING_STATUS.IN_PROGRESS]: "Đang làm",
       [BOOKING_STATUS.COMPLETED]: "Hoàn thành",
       [BOOKING_STATUS.CANCELLED]: "Hủy",
-      [BOOKING_STATUS.CHANGED]: "Thay đổi lịch",
+      // [BOOKING_STATUS.CHANGED]: "Thay đổi lịch",
     };
     return statusMap[status] || status;
   };
@@ -330,6 +348,7 @@ function BookingList() {
       render: (_: IBooking, __: IBooking, index: number) =>
         (filter.currentPage - 1) * filter.pageSize + index + 1,
       width: 70,
+      fixed: 'left',
     },
     {
       title: "Khách hàng",
@@ -339,22 +358,27 @@ function BookingList() {
           <div style={{ fontSize: 12, color: "#666" }}>{record.customerId?.phone || "-"}</div>
         </div>
       ),
+      fixed: 'left',
     },
     {
       title: "Dịch vụ",
+      onCell: () => ({
+        style: { minWidth: 180 },
+      }),
       render: (record: IBooking) => (
-        <div>
-          <div>{record.serviceId?.name || "-"}</div>
-          <Tag color={record.serviceId?.type === "trick" ? "purple" : "blue"} style={{ marginTop: 4 }}>
-            {record.serviceId?.type ? getServiceType(record.serviceId.type) : "-"}
-          </Tag>
-        </div>
+        record.serviceId?.name || "-"
       ),
+      fixed: 'left',
     },
     {
       title: "Ngày hẹn",
       render: (record: IBooking) =>
         record.appointmentDate ? dayjs(record.appointmentDate).format("DD/MM/YYYY HH:mm") : "-",
+    },
+    {
+      title: "Thời gian đến",
+      render: (record: IBooking) =>
+        record.comingTime ? dayjs(record.comingTime).format("DD/MM/YYYY HH:mm") : "-",
     },
     {
       title: "Thời gian chờ",
@@ -377,8 +401,30 @@ function BookingList() {
       },
     },
     {
-      title: "Bác sỹ",
-      render: (record: IBooking) => record.doctorId?.name || "-",
+      title: "Bác sỹ/ KTV",
+      onCell: () => ({
+        style: { minWidth: 220 },
+      }),
+      render: (record: IBooking) => {
+        if (record.type === SERVICE_TYPE.TRICK) {
+          return record.doctorId?.name || "-";
+        }
+
+        if (record.type === SERVICE_TYPE.JOB) {
+          const staffNames =
+            record.staffAssignments
+              ?.map((assignment) => assignment.staffId?.name)
+              .filter((name): name is string => Boolean(name)) || [];
+
+          if (staffNames.length > 0) {
+            return staffNames.join(", ");
+          }
+
+          return "-";
+        }
+
+        return record.doctorId?.name || "-";
+      },
     },
     {
       title: "Trạng thái",
@@ -413,9 +459,9 @@ function BookingList() {
             <Option value={BOOKING_STATUS.CANCELLED}>
               <Tag color="red">Hủy</Tag>
             </Option>
-            <Option value={BOOKING_STATUS.CHANGED}>
+            {/* <Option value={BOOKING_STATUS.CHANGED}>
               <Tag color="purple">Thay đổi lịch</Tag>
-            </Option>
+            </Option> */}
           </Select>
         );
       },
@@ -429,21 +475,35 @@ function BookingList() {
       title: "",
       key: "actions",
       render: (_: IBooking, item: IBooking) => (
-        <Space>
+        <Space size="middle">
           <Link to={`detail/${item._id}`}>
-            <Button icon={<InfoCircleOutlined />} />
+            <Button
+              color="blue"
+              variant="solid"
+              icon={<InfoCircleOutlined />}
+            ></Button>
           </Link>
-          <Link to={`edit/${item._id}`}>
-            <Button icon={<EditOutlined />} />
-          </Link>
+          {/* <Link to={`edit/${item._id}`}>
+            <Button
+              color="orange"
+              variant="solid"
+              icon={<EditOutlined />}
+            ></Button>
+          </Link> */}
+         
           <Popconfirm
             title="Xác nhận xóa"
+            description="Bạn có chắc chắn muốn xóa không?"
             onConfirm={() => handleDelete(item._id)}
-            okText="Xóa"
-            cancelText="Hủy"
-            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+            okText="Xác nhận"
+            cancelText="Không"
+            icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
           >
-            <Button danger icon={<DeleteOutlined />} />
+             <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
           </Popconfirm>
         </Space>
       ),
@@ -460,6 +520,7 @@ function BookingList() {
           </Button>
         </Link>
       </div>
+      
       <Form layout="vertical" form={form} onFinish={handleFinish}>
         <Row gutter={16}>
           <Col span={6}>
@@ -475,11 +536,11 @@ function BookingList() {
                 <Option value={BOOKING_STATUS.IN_PROGRESS}>Đang làm</Option>
                 <Option value={BOOKING_STATUS.COMPLETED}>Hoàn thành</Option>
                 <Option value={BOOKING_STATUS.CANCELLED}>Hủy</Option>
-                <Option value={BOOKING_STATUS.CHANGED}>Thay đổi lịch</Option>
+                {/* <Option value={BOOKING_STATUS.CHANGED}>Thay đổi lịch</Option> */}
               </Select>
             </Form.Item>
           </Col>
-          <Col span={6}>
+          <Col span={8}>
             <Form.Item name="dateRange" label="Khoảng thời gian">
               <DatePicker.RangePicker
                 style={{ width: "100%" }}
@@ -488,15 +549,52 @@ function BookingList() {
               />
             </Form.Item>
           </Col>
-          <Col span={4} style={{ display: "flex", alignItems: "center", marginTop: 8 }}>
-            <Form.Item style={{ width: "100%", marginBottom: 0 }}>
+        </Row>
+        <Row gutter={16}>
+          <Col span={6}>
+            <Form.Item name="doctorId" label="Bác sĩ">
+              <Select
+                placeholder="Chọn bác sĩ"
+                allowClear
+                loading={isLoadingDoctors}
+                showSearch
+                optionFilterProp="children"
+              >
+                {doctorList?.map((doctor: { _id: string; name: string }) => (
+                  <Option key={doctor._id} value={doctor._id}>
+                    {doctor.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col span={6}>
+            <Form.Item name="staffId" label="KTV">
+              <Select
+                placeholder="Chọn KTV"
+                allowClear
+                loading={isLoadingStaffs}
+                showSearch
+                optionFilterProp="children"
+              >
+                {staffList?.map((staff: { _id: string; name: string }) => (
+                  <Option key={staff._id} value={staff._id}>
+                    {staff.name}
+                  </Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+          <Col
+            span={8}
+            style={{ display: "flex", alignItems: "center", justifyContent: "flex-start" }}
+          >
+            <Form.Item style={{ marginBottom: 0 }}>
               <Space>
                 <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
                   Lọc
                 </Button>
-                <Button onClick={handleReset}>
-                  Đặt lại
-                </Button>
+                <Button onClick={handleReset}>Đặt lại</Button>
               </Space>
             </Form.Item>
           </Col>
@@ -504,7 +602,8 @@ function BookingList() {
       </Form>
 
       <Table
-        columns={columns}
+        columns={columns as ColumnType<IBooking>[]}
+        scroll={{ x: 'max-content' }}
         loading={isLoading}
         dataSource={data?.data.map((item) => ({ ...item, key: item._id }))}
         pagination={{

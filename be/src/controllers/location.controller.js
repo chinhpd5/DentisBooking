@@ -5,6 +5,19 @@ import { IS_DELETED } from "../utils/constants";
 export const createLocation = async (req, res) => {
   try {
     const data = req.body;
+    if (!data.name) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên tầng là bắt buộc",
+      });
+    }
+    const duplicateLocation = await Location.findOne({ name: data.name });
+    if (duplicateLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên tầng đã tồn tại",
+      });
+    }
     const newLocation = await Location.create(data);
     res.status(201).json({
       success: true,

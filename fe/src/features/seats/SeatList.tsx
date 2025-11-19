@@ -68,10 +68,10 @@ function SeatList() {
       toast.success("Xóa thành công");
       queryClient.invalidateQueries({ queryKey: ["seats"] });
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error("Xóa thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (error: unknown) => {
+    //   const err = error as { response?: { data?: { message?: string } } };
+    //   toast.error("Xóa thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const updateStatusMutation = useMutation({
@@ -80,10 +80,10 @@ function SeatList() {
       toast.success("Cập nhật trạng thái thành công");
       queryClient.invalidateQueries({ queryKey: ["seats"] });
     },
-    onError: (error: unknown) => {
-      const err = error as { response?: { data?: { message?: string } } };
-      toast.error("Cập nhật trạng thái thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
-    },
+    // onError: (error: unknown) => {
+    //   const err = error as { response?: { data?: { message?: string } } };
+    //   toast.error("Cập nhật trạng thái thất bại: " + (err.response?.data?.message || "Lỗi không xác định"));
+    // },
   });
 
   const handleDelete = (id: string) => {
@@ -244,7 +244,7 @@ function SeatList() {
               icon={<AppstoreOutlined />}
               onClick={() => setViewMode('grid')}
             >
-              Lưới
+              Trạng thái ghế
             </Button>
           </Space.Compact>
           <Link to="add">

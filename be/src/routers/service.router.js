@@ -15,19 +15,21 @@ import {
   createServiceSchema,
   updateServiceSchema,
 } from "../validations/service.validate";
-import { checkAuth, checkAdminStaff } from "../middlewares/checkAuth";
+import { checkAuth,checkAdminReceptionist } from "../middlewares/checkAuth";
 
 const router = express.Router();
 
-router.use(checkAuth, checkAdminStaff);
-
-router.post("/", validateRequest(createServiceSchema), createService);
+router.use(checkAuth);
 router.get("/", getListService);
 router.get("/all", getAllService);
 router.get("/first", getAllServiceIsFirst);
 router.get("/:id", getByIdService);
-router.put("/:id", validateRequest(updateServiceSchema), updateService);
+
+
+router.use(checkAdminReceptionist);
 router.patch("/:id/status", updateServiceStatus);
+router.post("/", validateRequest(createServiceSchema), createService);
+router.put("/:id", validateRequest(updateServiceSchema), updateService);
 router.delete("/:id", softDeleteService);
 
 export default router;

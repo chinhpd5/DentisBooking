@@ -18,8 +18,8 @@ export const convertNameRole = (role: string) =>{
   switch (role) {
     // case USER_ROLE.CUSTOMER:
     //   return "Khách hàng"
-    // case USER_ROLE.ADMIN:
-    //   return "Quản trị viên"
+    case "admin":
+      return "Quản trị viên"
     case USER_ROLE.DOCTOR:
       return "Bác sỹ"
     case USER_ROLE.RECEPTIONIST:

@@ -11,10 +11,10 @@ export enum IS_DELETED {
 
 export enum USER_ROLE {
   // CUSTOMER= "customer",
-  STAFF= "staff", // Kỹ thuật viên
-  // ADMIN= "admin", // Super admin
-  RECEPTIONIST= "receptionist", // Lễ tân
-  DOCTOR= "doctor" // bác sỹ
+  STAFF = "staff", // Kỹ thuật viên
+  // ADMIN = "admin", // Super admin
+  RECEPTIONIST = "receptionist", // Lễ tân
+  DOCTOR = "doctor" // bác sỹ
 }
 
 export enum STAFF_STATUS {
@@ -45,7 +45,7 @@ export enum BOOKING_STATUS {
   IN_PROGRESS = "inProgress", // Đang làm
   COMPLETED = "completed", // Hoàn thành
   CANCELLED = "cancelled", // Hủy
-  CHANGED = "changed", // Thay đổi lịch
+  // CHANGED = "changed", // Thay đổi lịch
 }
 
 export enum SERVICE_STATUS {

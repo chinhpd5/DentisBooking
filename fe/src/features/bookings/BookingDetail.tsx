@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { getBookingById } from "../../services/booking";
 import dayjs from "dayjs";
 import { BOOKING_STATUS } from "../../contants";
-import { getServiceType } from "../../utils/helper";
 import IBooking from "../../types/booking";
 import IService from "../../types/service";
 
@@ -29,7 +28,7 @@ function BookingDetail() {
       [BOOKING_STATUS.IN_PROGRESS]: { color: "orange", text: "Đang làm" },
       [BOOKING_STATUS.COMPLETED]: { color: "green", text: "Hoàn thành" },
       [BOOKING_STATUS.CANCELLED]: { color: "red", text: "Hủy" },
-      [BOOKING_STATUS.CHANGED]: { color: "purple", text: "Thay đổi lịch" },
+      // [BOOKING_STATUS.CHANGED]: { color: "purple", text: "Thay đổi lịch" },
     };
     const statusInfo = statusMap[status] || { color: "default", text: status };
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
@@ -56,12 +55,7 @@ function BookingDetail() {
           </Descriptions.Item>
 
           <Descriptions.Item label="Dịch vụ">
-            <div>
               <div><strong>{booking.serviceId?.name || "-"}</strong></div>
-              <Tag color={booking.serviceId?.type === "trick" ? "purple" : "blue"} style={{ marginTop: 4 }}>
-                {booking.serviceId?.type ? getServiceType(booking.serviceId.type) : "-"}
-              </Tag>
-            </div>
           </Descriptions.Item>
 
           <Descriptions.Item label="Ngày hẹn">

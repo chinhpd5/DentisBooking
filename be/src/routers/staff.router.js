@@ -15,12 +15,13 @@ import { checkAuth,checkAdmin } from "../middlewares/checkAuth";
 
 const router = express.Router();
 
-router.use(checkAuth, checkAdmin);
-
-router.post("/", validateRequest(createStaffSchema), createEmployee);
+router.use(checkAuth);
 router.get("/", getAllEmployees);
 router.get("/all",getAllStaff);
 router.get("/:id", getEmployeeById);
+
+router.use(checkAdmin);
+router.post("/", validateRequest(createStaffSchema), createEmployee);
 router.put("/:id", validateRequest(updateStaffSchema), updateEmployee);
 router.put("/:id/status", updateEmployeeStatus);
 router.delete("/:id", sortDeleteEmployee);

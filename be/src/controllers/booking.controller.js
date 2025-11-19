@@ -5,6 +5,51 @@ import StaffAssignment from '../models/staff-assignment.js';
 import Customer from '../models/customer.model.js';
 import { BOOKING_STATUS, IS_DELETED, SERVICE_TYPE, USER_ROLE } from '../utils/constants';
 
+// Helper function to check if timeEnd falls during break time based on staff schedule
+const isTimeEndDuringBreak = async (timeEnd, staffId) => {
+  const timeEndDate = new Date(timeEnd);
+  const timeEndHours = timeEndDate.getHours();
+  const timeEndMinutes = timeEndDate.getMinutes();
+  const dayOfWeek = timeEndDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  
+  // Convert to minutes since midnight for easier comparison
+  const timeEndInMinutes = timeEndHours * 60 + timeEndMinutes;
+  
+  // Get staff schedule
+  const staff = await Staff.findById(staffId);
+  if (!staff) {
+    return false; // If no staff found, don't block
+  }
+  
+  // Map day of week to schedule field name
+  const dayScheduleMap = {
+    0: 'scheduleSunday',
+    1: 'scheduleMonday',
+    2: 'scheduleTuesday',
+    3: 'scheduleWednesday',
+    4: 'scheduleThursday',
+    5: 'scheduleFriday',
+    6: 'scheduleSaturday'
+  };
+  
+  const scheduleFieldName = dayScheduleMap[dayOfWeek];
+  const daySchedule = staff[scheduleFieldName];
+  
+  if (!daySchedule) {
+    return false; // If no schedule for this day, don't block
+  }
+  
+  // Check if timeEnd falls between morning.end and afternoon.start (break time)
+  const morningEnd = daySchedule.morning?.end;
+  const afternoonStart = daySchedule.afternoon?.start;
+  
+  if (morningEnd !== undefined && afternoonStart !== undefined) {
+    return timeEndInMinutes > morningEnd && timeEndInMinutes < afternoonStart;
+  }
+  
+  return false;
+};
+
 // Helper function to check time conflict in StaffAssignment
 const hasStaffAssignmentConflict = async (staffId, timeStart, timeEnd, excludeBookingId = null) => {
   const query = {
@@ -130,7 +175,6 @@ export const createBooking = async (req, res) => {
   try {
 
     const data = req.body;
-    console.log('data', data);
     
     // Get service to check type and jobIds
     const service = await Service.findById(data.serviceId);
@@ -138,6 +182,14 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: 'Không tìm thấy dịch vụ',
+      });
+    }
+    
+    // Kiểm tra thời gian kết thúc có nằm trong giờ nghỉ không (nếu có doctorId/staffId)
+    if (data.doctorId && await isTimeEndDuringBreak(data.timeEnd, data.doctorId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Thời gian kết thúc không được nằm trong giờ nghỉ của nhân viên',
       });
     }
     
@@ -154,7 +206,6 @@ export const createBooking = async (req, res) => {
         );
         
         if (hasConflict) {
-          console.log('hasConflict', hasConflict);
           
           return res.status(409).json({
             success: false,
@@ -281,6 +332,7 @@ export const getListBooking = async (req, res) => {
       search = '', // search by note
       status,
       doctorId,
+      staffId,
       fromDate,
       toDate,
     } = req.query;
@@ -294,6 +346,26 @@ export const getListBooking = async (req, res) => {
       query.appointmentDate = {};
       if (fromDate) query.appointmentDate.$gte = new Date(fromDate);
       if (toDate) query.appointmentDate.$lte = new Date(toDate);
+    }
+
+    if (staffId) {
+      const assignments = await StaffAssignment.find({ staffId }).select('bookingId');
+      const bookingIds = assignments
+        .map((assignment) => assignment.bookingId)
+        .filter((id) => Boolean(id));
+
+      if (bookingIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          totalDocs: 0,
+          totalPages: 0,
+          currentPage: parseInt(page),
+          limit: parseInt(limit),
+          data: [],
+        });
+      }
+
+      query._id = { $in: bookingIds };
     }
 
     if (search) {
@@ -433,6 +505,13 @@ export const softDeleteBooking = async (req, res) => {
       });
     }
 
+    if (booking.status !== BOOKING_STATUS.CANCELLED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể xóa lịch hẹn khi trạng thái là Hủy',
+      });
+    }
+
     booking.isDeleted = IS_DELETED.YES;
     await booking.save();
 
@@ -451,13 +530,22 @@ export const softDeleteBooking = async (req, res) => {
 
 export const hardDeleteBooking = async (req, res) => {
   try {
-    const booking = await Booking.findByIdAndDelete(req.params.id);
+    const booking = await Booking.findById(req.params.id);
     if (!booking) {
       return res.status(400).json({
         success: false, 
         message: 'Không tìm thấy lịch hẹn để xóa',
       });
     }
+
+    if (booking.status !== BOOKING_STATUS.CANCELLED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Chỉ có thể xóa lịch hẹn khi trạng thái là Hủy',
+      });
+    }
+
+    await booking.deleteOne();
 
     res.status(200).json({
       success: true,
@@ -496,8 +584,8 @@ export const updateBookingStatus = async (req, res) => {
     const oldStatus = booking.status;
     const newStatus = status;
     
-    // Nếu booking đã bị hủy, không cho phép đổi sang trạng thái khác
-    if (oldStatus === BOOKING_STATUS.CANCELLED && newStatus !== BOOKING_STATUS.CANCELLED) {
+    // Nếu booking đã bị hủy, không cho phép đổi trạng thái
+    if (oldStatus === BOOKING_STATUS.CANCELLED) {
       return res.status(400).json({
         success: false,
         message: 'Booking đã hủy không thể đổi sang trạng thái khác',

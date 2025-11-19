@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Table, Tag, Modal, Descriptions, Spin, Card, DatePicker, Select, Space } from "antd";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { getTodaySchedule, getBookingById } from "../services/booking";
 import { getAllStaff } from "../services/staff";
 import dayjs, { Dayjs } from "dayjs";
@@ -138,55 +138,58 @@ function Home() {
       }
     });
 
-    return Array.from(staffMap.values()).sort((a, b) => {
+    let filteredStaff = Array.from(staffMap.values());
+
+    // Filter by selected role if exists
+    if (selectedRole) {
+      filteredStaff = filteredStaff.filter(staff => staff.role === selectedRole);
+    }
+
+    return filteredStaff.sort((a, b) => {
       // Sort doctors first, then staff
       if (a.role === USER_ROLE.DOCTOR && b.role !== USER_ROLE.DOCTOR) return -1;
       if (a.role !== USER_ROLE.DOCTOR && b.role === USER_ROLE.DOCTOR) return 1;
       return a.name.localeCompare(b.name);
     });
-  }, [scheduleItems]);
+  }, [scheduleItems, selectedRole]);
 
   // Calculate row span for each item
-  const getItemRowSpan = (startTime: Date, endTime: Date): number => {
+  const getItemRowSpan = useCallback((startTime: Date, endTime: Date): number => {
     const start = dayjs(startTime);
     const end = dayjs(endTime);
     const startSlot = start.hour() * 2 + (start.minute() >= 30 ? 1 : 0);
     const endSlot = end.hour() * 2 + (end.minute() > 30 ? 1 : 0);
     return Math.max(1, endSlot - startSlot);
-  };
+  }, []);
 
   // Get starting row index for an item
-  const getItemStartRow = (startTime: Date): number => {
+  const getItemStartRow = useCallback((startTime: Date): number => {
     const start = dayjs(startTime);
     const baseHour = 8;
     const hour = start.hour();
     const minute = start.minute();
     const rowIndex = (hour - baseHour) * 2 + (minute >= 30 ? 1 : 0);
     return Math.max(0, rowIndex);
-  };
+  }, []);
 
-  // Get items for a specific staff and time slot
-  const getItemsForSlot = (staffId: string, slotIndex: number): ScheduleItem[] => {
-    return scheduleItems.filter((item) => {
+  // Get items that start at a specific staff and time slot
+  const getItemsStartingAtSlot = useCallback((staffId: string, slotIndex: number): ScheduleItem[] => {
+    return scheduleItems
+      .filter((item) => item.staffId === staffId)
+      .filter((item) => getItemStartRow(item.startTime) === slotIndex)
+      .sort((a, b) => dayjs(a.startTime).valueOf() - dayjs(b.startTime).valueOf());
+  }, [scheduleItems, getItemStartRow]);
+
+  const hasContinuingItems = useCallback((staffId: string, slotIndex: number): boolean => {
+    return scheduleItems.some((item) => {
       if (item.staffId !== staffId) return false;
       const startRow = getItemStartRow(item.startTime);
       const rowSpan = getItemRowSpan(item.startTime, item.endTime);
-      return startRow <= slotIndex && startRow + rowSpan > slotIndex;
+      return startRow < slotIndex && startRow + rowSpan > slotIndex;
     });
-  };
+  }, [scheduleItems, getItemStartRow, getItemRowSpan]);
 
-  // Map to track which items have been rendered (to avoid duplicate rendering)
-  const renderedItems = useMemo(() => {
-    const map = new Map<string, { startRow: number; rowSpan: number }>();
-    scheduleItems.forEach((item) => {
-      const startRow = getItemStartRow(item.startTime);
-      const rowSpan = getItemRowSpan(item.startTime, item.endTime);
-      map.set(`${item.staffId}-${item.id}`, { startRow, rowSpan });
-    });
-    return map;
-  }, [scheduleItems]);
-
-  const handleItemClick = async (item: ScheduleItem) => {
+  const handleItemClick = useCallback(async (item: ScheduleItem) => {
     // If it's a booking, fetch full details
     if (item.type === "booking") {
       try {
@@ -203,7 +206,7 @@ function Home() {
       setSelectedItem(item);
     }
     setModalOpen(true);
-  };
+  }, [setModalOpen, setSelectedItem]);
 
   const getStatusTag = (status: BOOKING_STATUS) => {
     const statusMap: Record<BOOKING_STATUS, { color: string; text: string }> = {
@@ -212,7 +215,7 @@ function Home() {
       [BOOKING_STATUS.IN_PROGRESS]: { color: "orange", text: "Đang làm" },
       [BOOKING_STATUS.COMPLETED]: { color: "green", text: "Hoàn thành" },
       [BOOKING_STATUS.CANCELLED]: { color: "red", text: "Hủy" },
-      [BOOKING_STATUS.CHANGED]: { color: "purple", text: "Thay đổi lịch" },
+      // [BOOKING_STATUS.CHANGED]: { color: "purple", text: "Thay đổi lịch" },
     };
     const statusInfo = statusMap[status] || { color: "default", text: status };
     return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
@@ -236,103 +239,134 @@ function Home() {
     }
   };
 
+  const hasSchedules = scheduleItems.length > 0;
+
   // Create columns
-  const columns = [
-    {
-      title: "Thời gian",
-      dataIndex: "time",
-      key: "time",
-      width: 100,
-      fixed: "left" as const,
-      render: (time: string) => <strong>{time}</strong>,
-    },
-    ...staffList.map((staff) => ({
-      title: (
-        <div>
-          <div>{staff.name}</div>
-          <Tag color={staff.role === USER_ROLE.DOCTOR ? "blue" : "cyan"} style={{ marginTop: 4 }}>
-            {convertNameRole(staff.role)}
-          </Tag>
-        </div>
-      ),
-      key: staff.id,
-      width: 200,
-      render: (_: unknown, record: { slotIndex: number }) => {
-        const items = getItemsForSlot(staff.id, record.slotIndex);
-        const firstItem = items[0];
-        
-        if (!firstItem) return { children: null, props: {} };
+  const columns = useMemo(() => {
+    if (!hasSchedules) return [];
 
-        const itemKey = `${firstItem.staffId}-${firstItem.id}`;
-        const itemInfo = renderedItems.get(itemKey);
-        if (!itemInfo) return { children: null, props: {} };
-
-        const startRow = itemInfo.startRow;
-        const rowSpan = itemInfo.rowSpan;
-
-        // Only render at the start row
-        if (startRow !== record.slotIndex) {
-          return { children: null, props: { rowSpan: 0 } };
-        }
-
-        return {
-          children: (
-            <div
-              style={{
-                backgroundColor: firstItem.type === "booking" ? "#e6f7ff" : "#f0f9ff",
-                border: `2px solid ${firstItem.type === "booking" ? "#1890ff" : "#13c2c2"}`,
-                borderRadius: 4,
-                padding: 8,
-                margin: 2,
-                cursor: "pointer",
-                minHeight: Math.max(40, rowSpan * 30 - 4), // Adjust height based on rowSpan
-                position: "relative",
-                zIndex: 1,
-              }}
-              onClick={() => handleItemClick(firstItem)}
-            >
-              <div style={{ fontWeight: "bold", fontSize: 12, marginBottom: 4 }}>
-                {firstItem.type === "booking"
-                  ? (firstItem.data as IBooking).customerId?.name || ""
-                  : typeof (firstItem.data as IStaffAssignment).bookingId === "object" &&
-                    (firstItem.data as IStaffAssignment).bookingId !== null
-                  ? ((firstItem.data as IStaffAssignment).bookingId as IBooking).customerId?.name || ""
-                  : (firstItem.data as IStaffAssignment).staffId?.name || ""}
-              </div>
-              <div style={{ fontSize: 11, color: "#666" }}>
-                {firstItem.type === "booking"
-                  ? (firstItem.data as IBooking).serviceId?.name || ""
-                  : (firstItem.data as IStaffAssignment).serviceIds
-                      ?.map((s) => s.name)
-                      .join(", ") || ""}
-              </div>
-              <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
-                {dayjs(firstItem.startTime).format("HH:mm")} - {dayjs(firstItem.endTime).format("HH:mm")}
-              </div>
-              <div style={{ marginTop: 4 }}>
-                {firstItem.type === "booking" ? (
-                  getStatusTag((firstItem.data as IBooking).status)
-                ) : (
-                  typeof (firstItem.data as IStaffAssignment).bookingId === "object" &&
-                  (firstItem.data as IStaffAssignment).bookingId !== null &&
-                  getStatusTag(((firstItem.data as IStaffAssignment).bookingId as IBooking).status)
-                )}
-              </div>
-            </div>
-          ),
-          props: {
-            rowSpan: rowSpan,
-          },
-        };
+    return [
+      {
+        title: "Thời gian",
+        dataIndex: "time",
+        key: "time",
+        width: 80,
+        align: "center" as const,
+        fixed: "left" as const,
+        render: (time: string) => <div style={{ whiteSpace: "nowrap", fontWeight: "bold" }}>{time}</div>,
       },
-    })),
-  ];
+      ...staffList.map((staff) => ({
+        title: (
+          <div>
+            <div>{staff.name}</div>
+            <Tag color={staff.role === USER_ROLE.DOCTOR ? "blue" : "cyan"} style={{ marginTop: 4 }}>
+              {convertNameRole(staff.role)}
+            </Tag>
+          </div>
+        ),
+        key: staff.id,
+        align: "center" as const,
+        render: (_: unknown, record: { slotIndex: number }) => {
+          const items = getItemsStartingAtSlot(staff.id, record.slotIndex);
 
-  const dataSource = timeSlots.map((time, index) => ({
-    key: index,
-    time,
-    slotIndex: index,
-  }));
+          if (items.length === 0) {
+            if (hasContinuingItems(staff.id, record.slotIndex)) {
+              return {
+                children: null,
+                props: { rowSpan: 0 },
+              };
+            }
+            return {
+              children: null,
+              props: {},
+            };
+          }
+
+          const cellRowSpan = Math.max(
+            ...items.map((item) => getItemRowSpan(item.startTime, item.endTime)),
+            1
+          );
+
+          return {
+            children: (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6}}>
+                {items.map((item) => {
+                  const itemRowSpan = getItemRowSpan(item.startTime, item.endTime);
+                  const isBooking = item.type === "booking";
+                  const bookingData = item.data as IBooking;
+                  const assignmentData = item.data as IStaffAssignment;
+                  const assignmentBooking =
+                    typeof assignmentData.bookingId === "object" && assignmentData.bookingId !== null
+                      ? (assignmentData.bookingId as IBooking)
+                      : null;
+
+                  const serviceName = isBooking
+                    ? bookingData.serviceId?.name
+                    : assignmentData.serviceIds?.map((s) => s.name).join(", ");
+
+                  const customerName = isBooking
+                    ? bookingData.customerId?.name
+                    : assignmentBooking?.customerId?.name || assignmentData.staffId?.name;
+
+                  const statusTag = isBooking
+                    ? getStatusTag(bookingData.status)
+                    : assignmentBooking && getStatusTag(assignmentBooking.status);
+
+                  return (
+                    <div
+                      key={`${item.staffId}-${item.id}`}
+                      style={{
+                        backgroundColor: isBooking ? "#e6f7ff" : "#f0f9ff",
+                        width: "90%",
+                        maxWidth: "200px",
+                        border: `2px solid ${isBooking ? "#1890ff" : "#13c2c2"}`,
+                        borderRadius: 4,
+                        padding: 8,
+                        margin: "2px auto",
+                        cursor: "pointer",
+                        minHeight: Math.max(40, itemRowSpan * 30 - 4),
+                        position: "relative",
+                        zIndex: 1,
+                      }}
+                      onClick={() => handleItemClick(item)}
+                    >
+                      <div style={{ fontWeight: "bold", fontSize: 12, marginBottom: 4 }}>
+                        {serviceName || ""}
+                      </div>
+                      <div style={{ fontSize: 11, color: "#666" }}>
+                        {customerName || ""}
+                      </div>
+                      <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
+                        {dayjs(item.startTime).format("HH:mm")} - {dayjs(item.endTime).format("HH:mm")}
+                      </div>
+                      {statusTag && <div style={{ marginTop: 4 }}>{statusTag}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            ),
+            props: {
+              rowSpan: cellRowSpan,
+            },
+          };
+        },
+      })),
+    ];
+  }, [hasSchedules, staffList, getItemsStartingAtSlot, hasContinuingItems, getItemRowSpan, handleItemClick]);
+
+  const dataSource = useMemo(() => {
+    if (!hasSchedules) return [];
+    return timeSlots.map((time, index) => ({
+      key: index,
+      time,
+      slotIndex: index,
+    }));
+  }, [hasSchedules, timeSlots]);
+
+  const tableWidth = useMemo(() => {
+    if (!hasSchedules) return 80;
+    return 80 + staffList.length * 150;
+  }, [hasSchedules, staffList.length]);
 
   if (isLoading) {
     return (
@@ -343,71 +377,94 @@ function Home() {
   }
 
   return (
-    <div style={{ padding: 0 }}>
+    <>
       <Card
         title={`Lịch làm việc - ${selectedDate.format("DD/MM/YYYY")}`}
-        extra={
-          <Space>
-            <DatePicker
-              value={selectedDate}
-              onChange={(date) => setSelectedDate(date || dayjs())}
-              format="DD/MM/YYYY"
-              placeholder="Chọn ngày"
-            />
-            <Select
-              placeholder="Lọc theo vai trò"
-              style={{ width: 150 }}
-              allowClear
-              value={selectedRole}
-              onChange={handleFilterChange}
-            >
-              <Option value={USER_ROLE.DOCTOR}>Bác sĩ</Option>
-              <Option value={USER_ROLE.STAFF}>Kỹ thuật viên</Option>
-            </Select>
-            <Select
-              placeholder="Lọc theo nhân viên"
-              style={{ width: 200 }}
-              allowClear
-              value={selectedStaffId}
-              onChange={handleStaffChange}
-              showSearch
-              filterOption={(input, option) => {
-                const children = option?.children;
-                const value = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
-                return value.toLowerCase().includes(input.toLowerCase());
-              }}
-            >
-              {selectedRole === USER_ROLE.DOCTOR || !selectedRole
-                ? doctors.map((doctor: IStaff) => (
-                    <Option key={doctor._id} value={doctor._id}>
-                      {doctor.name}
-                    </Option>
-                  ))
-                : null}
-              {selectedRole === USER_ROLE.STAFF || !selectedRole
-                ? ktvs.map((ktv: IStaff) => (
-                    <Option key={ktv._id} value={ktv._id}>
-                      {ktv.name}
-                    </Option>
-                  ))
-                : null}
-            </Select>
-          </Space>
+      extra={
+        <Space>
+          <DatePicker
+            value={selectedDate}
+            onChange={(date) => setSelectedDate(date || dayjs())}
+            format="DD/MM/YYYY"
+            placeholder="Chọn ngày"
+          />
+          <Select
+            placeholder="Lọc theo vai trò"
+            style={{ width: 150 }}
+            allowClear
+            value={selectedRole}
+            onChange={handleFilterChange}
+          >
+            <Option value={USER_ROLE.DOCTOR}>Bác sĩ</Option>
+            <Option value={USER_ROLE.STAFF}>Kỹ thuật viên</Option>
+          </Select>
+          <Select
+            placeholder="Lọc theo nhân viên"
+            style={{ width: 200 }}
+            allowClear
+            value={selectedStaffId}
+            onChange={handleStaffChange}
+            showSearch
+            filterOption={(input, option) => {
+              const children = option?.children;
+              const value = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
+              return value.toLowerCase().includes(input.toLowerCase());
+            }}
+          >
+            {selectedRole === USER_ROLE.DOCTOR || !selectedRole
+              ? doctors.map((doctor: IStaff) => (
+                  <Option key={doctor._id} value={doctor._id}>
+                    {doctor.name}
+                  </Option>
+                ))
+              : null}
+            {selectedRole === USER_ROLE.STAFF || !selectedRole
+              ? ktvs.map((ktv: IStaff) => (
+                  <Option key={ktv._id} value={ktv._id}>
+                    {ktv.name}
+                  </Option>
+                ))
+              : null}
+          </Select>
+        </Space>
+      }
+      style={{ minHeight: "90vh", margin: -10 }}
+      styles={{
+        body: {
+          padding: 0,
+          overflow: "hidden",
         }
-        style={{ minHeight: "80vh" }}
-      >
-        <div style={{ overflowX: "auto", width: "100%" }}>
+      }}
+    >
+      {!hasSchedules ? (
+        <div
+          style={{
+            padding: 48,
+            textAlign: "center",
+            color: "#999",
+            fontStyle: "italic",
+          }}
+        >
+          Không có lịch trong ngày
+        </div>
+      ) : (
+        <div style={{ width: "100%", overflowX: "auto", padding: "16px" }}>
           <Table
             columns={columns}
             dataSource={dataSource}
             pagination={false}
-            scroll={{ x: Math.max(800, staffList.length * 200 + 100), y: "calc(100vh - 300px)" }}
+            scroll={{
+              x: tableWidth,
+              y: "calc(100vh - 250px)",
+            }}
             bordered
             size="small"
-            style={{ width: "100%", padding: 0 }}
+            tableLayout="fixed"
+            style={{marginRight: 15}}
           />
         </div>
-      </Card>
+      )}
+    </Card>
 
       <Modal
         title="Chi tiết lịch hẹn"
@@ -418,7 +475,7 @@ function Home() {
         }}
         footer={null}
         width={800}
-        centered={false}
+        centered={true}
         style={{ top: 20 }}
       >
         {selectedItem && (
@@ -570,7 +627,7 @@ function Home() {
           </Descriptions>
         )}
       </Modal>
-    </div>
+    </>
   );
 }
 

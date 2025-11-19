@@ -4,6 +4,15 @@ const type = "job";
 export const createJob = async (req, res) => {
   try {
     const data = req.body;
+
+    const existingJob = await Service.findOne({ name: data.name });
+    if (existingJob) {
+      return res.status(400).json({
+        success: false,
+        message: "Công việc đã tồn tại",
+      });
+    }
+
     const newJob = await Service.create({ ...data, type: "job" });
     res.status(201).json({
       success: true,

@@ -11,6 +11,8 @@
   left: 0;
   bottom: 0;
   overflow-y: auto; /* Nếu menu dài có thể scroll riêng */
+  transition: transform 0.3s ease;
+  z-index: 1000;
 }
 
 .branding {
@@ -19,11 +21,14 @@
   gap: 12px;
   padding: 20px 20px 10px;
 }
+
 .main {
   margin-left: 280px; /* Đẩy phần nội dung sang phải */
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-width: 0; /* Allow flex item to shrink below content size */
+  transition: margin-left 0.3s ease;
 }
 
 .header {
@@ -32,12 +37,15 @@
   background-color: #fff;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
 .content {
   padding: 20px;
   background-color: #f5f5f5;
   flex: 1;
+  overflow-x: auto; /* Allow horizontal scroll in content area */
+  min-width: 0; /* Allow flex item to shrink */
 }
 
 .title {
@@ -55,4 +63,86 @@
   width: 50px;
   height: auto;
   margin: 0;
+}
+
+/* Nút toggle menu - Ẩn trên desktop */
+.menu-toggle-btn {
+  display: none;
+}
+
+/* Overlay cho mobile/tablet */
+.sidebar-overlay {
+  display: none;
+}
+
+/* Responsive cho Tablet và màn hình nhỏ hơn */
+@media screen and (max-width: 1024px) {
+  /* Hiển thị nút toggle */
+  .menu-toggle-btn {
+    display: inline-flex !important;
+  }
+
+  /* Ẩn sidebar mặc định */
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  /* Hiển thị sidebar khi có class sidebar-open */
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Overlay khi sidebar mở */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.45);
+    z-index: 999;
+  }
+
+  /* Xóa margin-left cho main */
+  .main {
+    margin-left: 0;
+  }
+
+  /* Điều chỉnh padding cho content trên tablet */
+  .content {
+    padding: 15px;
+  }
+
+  .header {
+    padding: 12px 15px;
+  }
+}
+
+/* Responsive cho Mobile */
+@media screen and (max-width: 768px) {
+  .branding {
+    padding: 15px 15px 8px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .logo {
+    width: 40px;
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  .header {
+    padding: 10px 12px;
+  }
+
+  .header h3 {
+    font-size: 16px;
+  }
 }

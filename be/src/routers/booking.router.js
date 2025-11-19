@@ -22,17 +22,18 @@ import {
 
 const router = express.Router();
 
-router.use(checkAuth, checkAdminReceptionist);
-
-router.post("/", validateRequest(createBookingSchema), createBooking);
+router.use(checkAuth);
 router.get("/", getListBooking);
 router.get("/today", getTodaySchedule);
 router.get("/:id", getBookingById);
-router.put("/:id", validateRequest(updateBookingSchema), updateBooking);
 router.patch("/:id/status", validateRequest(updateBookingStatusSchema), updateBookingStatus);
+
+router.use(checkAdminReceptionist);
+router.post("/", validateRequest(createBookingSchema), createBooking);
+router.put("/:id", validateRequest(updateBookingSchema), updateBooking);
 router.delete("/:id", softDeleteBooking);
 
-// Staff assignment
+// Staff assignment123
 router.post(
   "/:id/staff",
   validateRequest(modifyBookingStaffSchema),

@@ -33,6 +33,8 @@ axiosInstance.interceptors.response.use(
 
     switch (status) {
       case 400:
+        console.log(error);
+        
         toast.error(error.response?.data?.message  || "Dữ liệu không hợp lệ");
         break;
 
@@ -43,7 +45,9 @@ axiosInstance.interceptors.response.use(
         break;
 
       case 403:
-        toast.error(error.response?.data?.message ||"Bạn không có quyền truy cập chức năng này.");
+        console.log(error);
+        
+        toast.error(error.response?.data?.message ||"Bạn không có quyền truy cập chức năng này123.");
         // window.location.href = "/unauthorized";
         break;
 

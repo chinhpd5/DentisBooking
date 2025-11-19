@@ -5,6 +5,7 @@ import { login } from '../services/user';
 import { Login } from '../types/user';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
+import bgImage from '../assets/bg.jpg';
 const { Title } = Typography;
 
 function Login() {
@@ -16,6 +17,8 @@ function Login() {
     onSuccess: (res: any) => {
       toast.success("Đăng nhập thành công");
       localStorage.setItem('tokenDentis',res.data.data.accessToken)
+      localStorage.setItem('nameDentis',res.data.data.user.name)
+      localStorage.setItem('roleDentis',res.data.data.user.role)
       navigate('/')
     },
     onError: (res: any) => {
@@ -29,8 +32,12 @@ function Login() {
   };
   return (
     <div style={styles.container}>
+      <div style={styles.overlay}></div>
       <Card style={styles.card}>
-        <Title level={2} style={{ textAlign: 'center' }}>Đăng nhập</Title>
+        <Title level={2} style={{ textAlign: 'center' }}>
+          Xiêm - Anh <br />
+          Hệ thống đặt lịch thông minh
+        </Title>
 
         <Form
           form={form}
@@ -78,13 +85,29 @@ const styles: { [key: string]: React.CSSProperties } = {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    background: '#f0f2f5',
+    backgroundImage: `url(${bgImage})`,
+    backgroundSize: 'cover',
+    backgroundPosition: 'center',
+    backgroundRepeat: 'no-repeat',
+    position: 'relative',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backdropFilter: 'blur(3px)',
   },
   card: {
-    width: 550,
+    width: 600,
     padding: 24,
     borderRadius: 8,
-    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    position: 'relative',
+    zIndex: 1,
   },
 };
 

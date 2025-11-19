@@ -64,7 +64,7 @@ function BookingEdit() {
     const bookingUpdateData: Partial<CreateBooking> & { status?: BOOKING_STATUS } = {
       appointmentDate: appointmentDate ? appointmentDate.toDate() : booking.appointmentDate,
       timeEnd: timeEnd ? timeEnd.toDate() : booking.timeEnd,
-      status: BOOKING_STATUS.CHANGED,
+      // status: BOOKING_STATUS.CHANGED,
     };
 
     // If service type is trick, calculate doctorDate
@@ -114,11 +114,7 @@ function BookingEdit() {
 
                   <Form.Item label="Ngày sinh">
                     <Input
-                      value={
-                        booking.customerId?.dateOfBirth
-                          ? dayjs(booking.customerId.dateOfBirth).format("DD/MM/YYYY")
-                          : ""
-                      }
+                      value={booking.customerId?.yearOfBirth}
                       disabled
                     />
                   </Form.Item>

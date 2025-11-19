@@ -1,11 +1,9 @@
-import { Button, Col, DatePicker, Flex, Form, Input, Row, Select, Space } from "antd";
+import { Button, Col, Flex, Form, Input, InputNumber, Row, Select, Space } from "antd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import Toast from "react-hot-toast";
 import { CreateCustomer } from "../../types/customer";
 import { addCustomer } from "../../services/customer";
-import dayjs from "dayjs";
-import type { Dayjs } from "dayjs";
 
 const { Option } = Select;
 
@@ -24,18 +22,16 @@ function CustomerAdd() {
     },
   });
 
-  const onFinish = (values: CreateCustomer & { dateOfBirth?: Dayjs | string }) => {
-    const submitData: Omit<CreateCustomer, 'dateOfBirth'> & { dateOfBirth?: string } = {
+  const onFinish = (values: CreateCustomer) => {
+    const submitData: CreateCustomer = {
       name: values.name,
       phone: values.phone,
       address: values.address,
       gender: values.gender || 'other',
       note: values.note || '',
-      dateOfBirth: values.dateOfBirth && typeof values.dateOfBirth !== 'string' 
-        ? dayjs(values.dateOfBirth).toISOString() 
-        : values.dateOfBirth as string | undefined,
+      yearOfBirth: values.yearOfBirth,
     };
-    mutate(submitData as unknown as CreateCustomer);
+    mutate(submitData);
   };
 
   const onReset = () => {
@@ -108,13 +104,26 @@ function CustomerAdd() {
                 </Form.Item>
 
                 <Form.Item
-                  name="dateOfBirth"
-                  label="Ngày sinh"
+                  name="yearOfBirth"
+                  label="Năm sinh"
+                  rules={[
+                    {
+                      validator: (_, value) => {
+                        if (!value) return Promise.resolve();
+                        const currentYear = new Date().getFullYear();
+                        if (value < 1900 || value > currentYear - 1) {
+                          return Promise.reject(new Error("Năm sinh phải lớn hơn 1 tuổi và hợp lệ"));
+                        }
+                        return Promise.resolve();
+                      },
+                    },
+                  ]}
                 >
-                  <DatePicker
+                  <InputNumber
                     style={{ width: "100%" }}
-                    placeholder="Chọn ngày sinh"
-                    format="DD/MM/YYYY"
+                    placeholder="Nhập năm sinh"
+                    min={1900}
+                    max={new Date().getFullYear() - 1}
                   />
                 </Form.Item>
 

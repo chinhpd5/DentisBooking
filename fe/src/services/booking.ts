@@ -22,6 +22,7 @@ export const getListBooking = async (
   search?: string,
   status?: BOOKING_STATUS,
   doctorId?: string,
+  staffId?: string,
   fromDate?: string,
   toDate?: string
 ) => {
@@ -29,6 +30,7 @@ export const getListBooking = async (
   if (search) query += `&search=${encodeURIComponent(search)}`;
   if (status) query += `&status=${status}`;
   if (doctorId) query += `&doctorId=${doctorId}`;
+  if (staffId) query += `&staffId=${staffId}`;
   if (fromDate) query += `&fromDate=${fromDate}`;
   if (toDate) query += `&toDate=${toDate}`;
   const { data } = await axiosInstance.get(query);

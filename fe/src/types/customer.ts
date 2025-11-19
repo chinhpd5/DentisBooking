@@ -3,7 +3,7 @@ interface ICustomer {
   name: string;
   phone: string;
   address: string;
-  dateOfBirth: Date;
+  yearOfBirth?: number;
   gender: string;
   note: string;
 }
