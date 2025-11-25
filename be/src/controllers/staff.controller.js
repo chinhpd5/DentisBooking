@@ -1,9 +1,52 @@
 import Staff from '../models/staff.model'; 
-import { IS_DELETED, STAFF_STATUS  } from  "../utils/constants" 
+import { IS_DELETED, STAFF_STATUS,USER_ROLE  } from  "../utils/constants" 
 
 export const createEmployee = async (req, res) => {
   try {
     const data = req.body;
+
+    if (data.email) {
+      const duplicateEmail = await Staff.findOne({
+        isDeleted: IS_DELETED.NO,
+        email: data.email,
+      });
+
+      if (duplicateEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email đã tồn tại trong hệ thống",
+        });
+      }
+    }
+
+    if (data.phone) {
+      const duplicatePhone = await Staff.findOne({
+        isDeleted: IS_DELETED.NO,
+        phone: data.phone,
+      });
+
+      if (duplicatePhone) {
+        return res.status(400).json({
+          success: false,
+          message: "Số điện thoại đã tồn tại trong hệ thống",
+        });
+      }
+    }
+    
+    if (data.name) {
+      const duplicateName = await Staff.findOne({
+        isDeleted: IS_DELETED.NO,
+        name: data.name,
+      });
+
+      if (duplicateName) {
+        return res.status(400).json({
+          success: false,
+          message: "Tên nhân viên đã tồn tại trong hệ thống",
+        });
+      }
+    }
+
     const newStaff = await Staff.create(data);
     res.status(201).json({
       success: true,
@@ -66,11 +109,30 @@ export const getAllEmployees = async (req, res) => {
   }
 };
 
+export const getAllStaff = async (req, res) => {
+  try {
+    const { role } = req.query;
+    const query = { isDeleted: IS_DELETED.NO };
+    if (role) query.role = role;
+    const staff = await Staff.find(query);
+    return res.status(200).json({
+      success: true,
+      data: staff,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách nhân viên",
+      error: error.message,
+    });
+  }
+};
+
 export const getEmployeeById = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff || staff.isDeleted === IS_DELETED.YES) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy nhân viên",
       });
@@ -90,17 +152,63 @@ export const getEmployeeById = async (req, res) => {
 
 export const updateEmployee = async (req, res) => {
   try {
-    const staff = await Staff.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const { email, phone, ...rest } = req.body;
 
-    if (!staff) {
-      return res.status(404).json({
+    const existingStaff = await Staff.findById(req.params.id);
+    if (!existingStaff || existingStaff.isDeleted === IS_DELETED.YES) {
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy nhân viên để cập nhật",
       });
     }
+
+    if (existingStaff.status === STAFF_STATUS.DISABLED) {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể chỉnh sửa thông tin nhân viên đã nghỉ",
+      });
+    }
+
+    // if (email) {
+    //   const duplicateEmail = await Staff.findOne({
+    //     _id: { $ne: req.params.id },
+    //     isDeleted: IS_DELETED.NO,
+    //     email,
+    //   });
+
+    //   if (duplicateEmail) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Email đã tồn tại trong hệ thống",
+    //     });
+    //   }
+    // }
+
+    // if (phone) {
+    //   const duplicatePhone = await Staff.findOne({
+    //     _id: { $ne: req.params.id },
+    //     isDeleted: IS_DELETED.NO,
+    //     phone,
+    //   });
+
+    //   if (duplicatePhone) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Số điện thoại đã tồn tại trong hệ thống",
+    //     });
+    //   }
+    // }
+
+    const updatePayload = {
+      ...rest,
+      ...(email !== undefined ? { email } : {}),
+      ...(phone !== undefined ? { phone } : {}),
+    };
+
+    const staff = await Staff.findByIdAndUpdate(req.params.id, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json({
       success: true,
@@ -120,7 +228,7 @@ export const sortDeleteEmployee = async (req, res) => {
   try {
     const staff = await Staff.findById(req.params.id);
     if (!staff) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy nhân viên để xóa",
       });
@@ -147,7 +255,7 @@ export const hardDeleteEmployee = async (req, res) => {
     const staff = await Staff.findByIdAndDelete(req.params.id);
 
     if (!staff) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy nhân viên để xóa",
       });
@@ -181,7 +289,7 @@ export const updateEmployeeStatus = async (req, res) => {
 
     const staff = await Staff.findById(id);
     if (!staff) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy nhân viên",
       });
@@ -203,3 +311,4 @@ export const updateEmployeeStatus = async (req, res) => {
     });
   }
 };
+

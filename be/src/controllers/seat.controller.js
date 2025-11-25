@@ -4,6 +4,26 @@ import { IS_DELETED, SEAT_STATUS  } from  "../utils/constants"
 export const createSeat= async (req, res) => {
   try {
     const data = req.body;
+
+    if (!data.name) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên ghế là bắt buộc",
+      });
+    }
+
+    const duplicateSeat = await Seat.findOne({
+      name: data.name,
+      ...(Seat.schema.path("isDeleted") ? { isDeleted: IS_DELETED.NO } : {}),
+    });
+
+    if (duplicateSeat) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên ghế đã tồn tại trong hệ thống",
+      });
+    }
+
     const newSeat = await Seat.create(data);
     res.status(201).json({
       success: true,
@@ -32,7 +52,7 @@ export const getAllSeats = async (req, res) => {
     const query = { isDeleted: IS_DELETED.NO };
 
     if (status) query.status = status;
-    if (location) query.location = location;
+    if (location) query.locationId = location;
 
     if (search) {
       query.$or = [
@@ -44,7 +64,13 @@ export const getAllSeats = async (req, res) => {
       page: parseInt(page),
       limit: parseInt(limit),
       sort: { createdAt: -1 },
+      populate: [
+        {
+          path: "locationId"
+        }
+      ],
     };
+
 
     const result = await Seat.paginate(query, options);
 
@@ -67,9 +93,9 @@ export const getAllSeats = async (req, res) => {
 
 export const getSeatById = async (req, res) => {
   try {
-    const seat = await Seat.findById(req.params.id);
+    const seat = await Seat.findById(req.params.id).populate('locationId');
     if (!seat) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy ghế",
       });
@@ -89,17 +115,41 @@ export const getSeatById = async (req, res) => {
 
 export const updateSeat = async (req, res) => {
   try {
-    const seat = await Seat.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    const seatId = req.params.id;
+    const { name, ...rest } = req.body;
 
-    if (!seat) {
-      return res.status(404).json({
+    const existingSeat = await Seat.findById(seatId);
+    if (!existingSeat) {
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy ghế để cập nhật",
       });
     }
+
+    // if (name) {
+    //   const duplicateSeat = await Seat.findOne({
+    //     _id: { $ne: seatId },
+    //     name,
+    //     ...(Seat.schema.path("isDeleted") ? { isDeleted: IS_DELETED.NO } : {}),
+    //   });
+
+    //   if (duplicateSeat) {
+    //     return res.status(400).json({
+    //       success: false,
+    //       message: "Tên ghế đã tồn tại trong hệ thống",
+    //     });
+    //   }
+    // }
+
+    const updatePayload = {
+      ...rest,
+      ...(name !== undefined ? { name } : {}),
+    };
+
+    const seat = await Seat.findByIdAndUpdate(seatId, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
 
     res.status(200).json({
       success: true,
@@ -120,7 +170,7 @@ export const hardDeleteSeat = async (req, res) => {
     const seat = await Seat.findByIdAndDelete(req.params.id);
 
     if (!seat) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy ghế để xóa",
       });
@@ -152,16 +202,30 @@ export const updateSeatStatus = async (req, res) => {
       });
     }
 
-    const seat = await Seat.findById(id);
+    const seat = await Seat.findById(id).populate('locationId');
     if (!seat) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy ghế",
       });
     }
 
+    const oldStatus = seat.status;
     seat.status = status;
     await seat.save();
+
+    // Emit socket event để thông báo real-time cho các client khác
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('seatStatusChanged', {
+        seatId: seat._id,
+        seatName: seat.name,
+        oldStatus: oldStatus,
+        newStatus: status,
+        location: seat.locationId?.name || 'N/A',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     res.status(200).json({
       success: true,

@@ -10,10 +10,10 @@ export const SEAT_STATUS = Object.freeze({
   REPAIR: 3,
 });
 
-export const TRICK_STATUS = Object.freeze({
-  DISABLED: 0,
-  ACTIVE: 1,
-});
+// export const TRICK_STATUS = Object.freeze({
+//   DISABLED: 0,
+//   ACTIVE: 1,
+// });
 
 export const USER_STATUS = Object.freeze({
   DISABLED: 0,
@@ -28,7 +28,7 @@ export const USER_ROLE = Object.freeze({
   DOCTOR: "doctor" // bác sỹ
 });
 
-export const JOB_STATUS = Object.freeze({
+export const SERVICE_STATUS = Object.freeze({
   DISABLED: 0,
   ACTIVE: 1
 });
@@ -38,6 +38,10 @@ export const STAFF_STATUS = Object.freeze({
   ACTIVE: 1
 });
 
+// Keep backward compatibility
+export const JOB_STATUS = SERVICE_STATUS;
+export const TRICK_STATUS = SERVICE_STATUS;
+
 export const BOOKING_STATUS = Object.freeze({
   BOOKED: "booked",              // Đã đặt
   ARRIVED: "arrived",            // Đã đến
@@ -45,4 +49,9 @@ export const BOOKING_STATUS = Object.freeze({
   COMPLETED: "completed",        // Hoàn thành
   CANCELLED: "cancelled",        // Hủy
   CHANGED: "changed",            // Thay đổi lịch
+})
+
+export const SERVICE_TYPE = Object.freeze({
+  JOB: "job",
+  TRICK: "trick",
 })

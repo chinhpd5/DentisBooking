@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model";
-import { IS_DELETED, USER_STATUS } from "../utils/constants";
+import { IS_DELETED, USER_STATUS, USER_ROLE } from "../utils/constants";
 
 export const register = async (req, res) => {
   try {
@@ -23,7 +23,7 @@ export const register = async (req, res) => {
       username,
       password: hashedPassword,
       role: role || USER_ROLE.STAFF,
-      active: USER_STATUS.ACTIVE,
+      status: USER_STATUS.ACTIVE,
       isDeleted: IS_DELETED.NO,
     });
 
@@ -53,7 +53,7 @@ export const login = async (req, res) => {
     }).select("+password");
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tài khoản",
       });
@@ -68,7 +68,7 @@ export const login = async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: "Mật khẩu không chính xác",
       });
@@ -99,8 +99,6 @@ export const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log(error);
-    
     res.status(500).json({
       success: false,
       message: "Lỗi khi đăng nhập",
@@ -121,7 +119,12 @@ export const getAllUsers = async (req, res) => {
 
     const query = { isDeleted: IS_DELETED.NO };
     if (role) query.role = role;
-    if (active) query.active = active;
+    if (active !== undefined && active !== null && active !== "") {
+      const activeStatus = parseInt(active);
+      if (activeStatus === USER_STATUS.DISABLED || activeStatus === USER_STATUS.ACTIVE) {
+        query.status = activeStatus;
+      }
+    }
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -133,7 +136,7 @@ export const getAllUsers = async (req, res) => {
       page: parseInt(page),
       limit: parseInt(limit),
       sort: { createdAt: -1 },
-      populate: "staffId",
+      // populate: "staffId",
       select: "-password", 
     };
 
@@ -158,9 +161,9 @@ export const getAllUsers = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select("-password").populate("staffId");
+    const user = await User.findById(req.params.id).select("-password")
     if (!user || user.isDeleted === IS_DELETED.YES) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy người dùng",
       });
@@ -188,7 +191,7 @@ export const updateUser = async (req, res) => {
       runValidators: true,
     });
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy người dùng để cập nhật",
       });
@@ -212,9 +215,16 @@ export const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy người dùng để xóa",
+      });
+    }
+
+    if (user.role === USER_ROLE.ADMIN) {
+      return res.status(403).json({
+        success: false,
+        message: "Không thể xóa tài khoản quản trị viên",
       });
     }
 
@@ -248,13 +258,13 @@ export const updateUserStatus = async (req, res) => {
 
     const user = await User.findById(id);
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy người dùng",
       });
     }
 
-    user.active = active;
+    user.status = active;
     await user.save();
 
     res.status(200).json({
@@ -278,7 +288,7 @@ export const changePassword = async (req, res) => {
     
     const user = await User.findById(userId).select("+password");
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy người dùng",
       });
@@ -318,7 +328,7 @@ export const resetPassword = async (req, res) => {
     const user = await User.findById(id);
 
     if (!user) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tài khoản",
       });

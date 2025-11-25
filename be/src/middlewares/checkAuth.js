@@ -49,21 +49,27 @@ export const checkPermission = (...roles) =>{
 
 export const checkAdmin = (req,res,next) => {
   if(req.user.role !== USER_ROLE.ADMIN){
-    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này"})
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này, chỉ dành cho admin"})
   }
   next();
 }
 
 export const checkStaff = (req,res,next) => {
   if(req.user.role !== USER_ROLE.STAFF){
-    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này"})
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này, chỉ dành cho staff"})
   }
   next();
 }
 
 export const checkAdminStaff = (req,res,next) => {
   if(!(req.user.role === USER_ROLE.ADMIN || req.user.role === USER_ROLE.STAFF)){
-    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này"})
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này, chỉ dành cho admin hoặc staff"})
+  }
+  next();
+}
+export const checkAdminReceptionist = (req,res,next) => {
+  if(!(req.user.role === USER_ROLE.ADMIN || req.user.role === USER_ROLE.RECEPTIONIST)){
+    return res.status(403).json({message: "Bạn không có quyền sử dụng chức năng này, chỉ dành cho admin hoặc receptionist"})
   }
   next();
 }

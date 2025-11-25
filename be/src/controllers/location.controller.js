@@ -1,7 +1,23 @@
 import Location from "../models/location.model";
+import Seat from "../models/seat.model";
+import { IS_DELETED } from "../utils/constants";
+
 export const createLocation = async (req, res) => {
   try {
     const data = req.body;
+    if (!data.name) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên tầng là bắt buộc",
+      });
+    }
+    const duplicateLocation = await Location.findOne({ name: data.name });
+    if (duplicateLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên tầng đã tồn tại",
+      });
+    }
     const newLocation = await Location.create(data);
     res.status(201).json({
       success: true,
@@ -37,7 +53,7 @@ export const getLocationById = async (req, res) => {
     const { id } = req.params;
     const location = await Location.findById(id);
     if (!location) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tầng",
       });
@@ -63,7 +79,7 @@ export const updateLocation = async (req, res) => {
       runValidators: true,
     });
     if (!updatedLocation) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tầng để cập nhật",
       });
@@ -85,9 +101,23 @@ export const updateLocation = async (req, res) => {
 export const deleteLocation = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Kiểm tra xem có seat nào đang sử dụng location này không
+    const seatsUsingLocation = await Seat.findOne({
+      locationId: id,
+      isDeleted: IS_DELETED.NO,
+    });
+
+    if (seatsUsingLocation) {
+      return res.status(400).json({
+        success: false,
+        message: "Không thể xóa tầng này. Đang có ghế đang sử dụng tầng này.",
+      });
+    }
+
     const deletedLocation = await Location.findByIdAndDelete(id);
     if (!deletedLocation) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy tầng để xóa",
       });

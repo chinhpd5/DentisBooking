@@ -10,7 +10,7 @@ export const createSeatSchema = Joi.object({
     "string.max": "Tên ghế tối đa {#limit} ký tự",
   }),
 
-  location: Joi.string().messages({
+  locationId: Joi.string().messages({
     "string.base": "ID vị trí phải là chuỗi",
     "string.empty": "ID vị trí không được để trống",
   }),
@@ -24,12 +24,6 @@ export const createSeatSchema = Joi.object({
     "string.base": "Mô tả phải là chuỗi",
     "string.max": "Mô tả tối đa {#limit} ký tự",
   }),
-
-  trickIds: Joi.array().items(Joi.string()).messages({
-    "array.base": "Danh sách trickIds phải là mảng",
-    "string.base": "Mỗi trickId phải là chuỗi (ObjectId)",
-  }),
-
   isDeleted: Joi.number().valid(...Object.values(IS_DELETED)).messages({
     "number.base": "Trạng thái isDeleted phải là số",
     "any.only": `Chỉ chấp nhận các giá trị: ${Object.values(IS_DELETED).join(", ")}`,
@@ -38,6 +32,6 @@ export const createSeatSchema = Joi.object({
 
 // 🟡 Schema cập nhật ghế (có thể bỏ qua 1 số trường)
 export const updateSeatSchema = createSeatSchema.fork(
-  ["name", "location", "status", "description", "trickIds"],
+  ["name", "locationId", "status", "description"],
   (schema) => schema.optional()
 );

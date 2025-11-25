@@ -1,8 +1,7 @@
-import { Button, Col, Flex, Form, Input, Row, Select, Space, Spin } from "antd";
+import { Button, Col, Flex, Form, Input, Row, Select, Space, Spin, Card } from "antd";
 const { Option } = Select;
 import {convertNameRoleArray} from "../../utils/helper";
 import {useMutation, useQueryClient} from "@tanstack/react-query";
-import {addStaff} from "../../services/staff";
 import Toast from "react-hot-toast";
 import { STAFF_STATUS } from "../../contants";
 import { useNavigate, useParams } from "react-router-dom";
@@ -10,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getStaffById, updateStaff } from "../../services/staff";
 import { CreateStaff, IStaff } from "../../types/staff";
 import { useEffect } from "react";
+import ScheduleInput from "../../components/ScheduleInput";
 
 const tailLayout = {
   wrapperCol: { offset: 8, span: 16 },
@@ -34,7 +34,7 @@ function StaffEdit() {
     if (data) {
       form.setFieldsValue(data);
     }
-  }, [data]);
+  }, [data, form]);
 
   const queryClient = useQueryClient();
   
@@ -46,9 +46,10 @@ function StaffEdit() {
       form.resetFields();
       navigate('/staff')
     },
-    onError: (error: any) => {
-      Toast.error("Cập nhật nhân viên thất bại: " + error.data.message);
-    }
+    // onError: (error: unknown) => {
+    //   const err = error as { data?: { message?: string } };
+    //   Toast.error("Cập nhật nhân viên thất bại: " + (err.data?.message || "Lỗi không xác định"));
+    // }
   });
 
   const onFinish = (data: CreateStaff) => {
@@ -70,7 +71,7 @@ function StaffEdit() {
       <h2>Cập nhật nhân viên</h2>
 
       <Flex justify="center">
-        <div style={{ minWidth: 1200 }}>
+        <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
           <Form
             form={form}
             name="control-hooks"
@@ -149,14 +150,29 @@ function StaffEdit() {
               </Col>
             </Row>
 
-            <Row justify="end" gutter={24}>
+            {/* Section for Work Schedule */}
+            <Row gutter={24}>
+              <Col span={24}>
+                <Card title="Lịch làm việc" style={{ marginTop: 16 }}>
+                  <ScheduleInput formName="scheduleMonday" label="Thứ 2" />
+                  <ScheduleInput formName="scheduleTuesday" label="Thứ 3" />
+                  <ScheduleInput formName="scheduleWednesday" label="Thứ 4" />
+                  <ScheduleInput formName="scheduleThursday" label="Thứ 5" />
+                  <ScheduleInput formName="scheduleFriday" label="Thứ 6" />
+                  <ScheduleInput formName="scheduleSaturday" label="Thứ 7" />
+                  <ScheduleInput formName="scheduleSunday" label="Chủ Nhật" />
+                </Card>
+              </Col>
+            </Row>
+
+            <Row justify="start" gutter={24} style={{ marginTop: 24 }}>
               <Form.Item {...tailLayout}>
                 <Space>
                   <Button type="primary" htmlType="submit" loading={isPending}>
-                    Submit
+                    Cập nhật
                   </Button>
                   <Button htmlType="button" onClick={onReset}>
-                    Reset
+                    Nhập lại
                   </Button>
                 </Space>
               </Form.Item>

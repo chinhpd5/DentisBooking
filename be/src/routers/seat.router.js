@@ -12,16 +12,18 @@ import {
   createSeatSchema,
   updateSeatSchema
 } from "../validations/seat.validate";
-import { checkAuth, checkAdminStaff } from "../middlewares/checkAuth";
+import { checkAuth, checkAdmin } from "../middlewares/checkAuth";
 
 const router = express.Router();
 
 router.use(checkAuth);
-router.post("/", validateRequest(createSeatSchema), createSeat);
 router.get("/", getAllSeats);
 router.get("/:id", getSeatById);
+router.patch("/:id/status", updateSeatStatus);
+
+router.use(checkAdmin);
+router.post("/", validateRequest(createSeatSchema), createSeat);
 router.put("/:id", validateRequest(updateSeatSchema), updateSeat);
 router.delete("/:id", hardDeleteSeat);
-router.patch("/:id/status", updateSeatStatus);
 
 export default router;

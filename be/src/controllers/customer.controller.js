@@ -2,6 +2,15 @@ import Customer from "../models/customer.model";
 export const createCustomer = async (req, res) => {
   try {
     const data = req.body;
+
+    const existingCustomer = await Customer.findOne({ phone: data.phone });
+    if (existingCustomer) {
+      return res.status(400).json({
+        success: false,
+        message: "Số điện thoại đã tồn tại",
+      });
+    }
+
     const newCustomer = await Customer.create(data);
     res.status(201).json({
       success: true,
@@ -19,10 +28,38 @@ export const createCustomer = async (req, res) => {
 
 export const getAllCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find().sort({ createdAt: -1 });
+    const {
+      page = 1,
+      limit = 10,
+      search,
+    } = req.query;
+
+    const query = {};
+
+    if (search && typeof search === 'string' && search.trim()) {
+      const searchTerm = search.trim();
+      query.$or = [
+        { name: { $regex: searchTerm, $options: "i" } },
+        { phone: { $regex: searchTerm, $options: "i" } },
+        { address: { $regex: searchTerm, $options: "i" } },
+      ];
+    }
+
+    const options = {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      sort: { createdAt: -1 },
+    };
+
+    const result = await Customer.paginate(query, options);
+    
     res.status(200).json({
       success: true,
-      data: customers,
+      data: result.docs,
+      totalDocs: result.totalDocs,
+      limit: result.limit,
+      totalPages: result.totalPages,
+      currentPage: result.page,
     });
   } catch (error) {
     res.status(500).json({
@@ -38,7 +75,7 @@ export const getCustomerById = async (req, res) => {
     const { id } = req.params;
     const customer = await Customer.findById(id);
     if (!customer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng",
       });
@@ -65,7 +102,7 @@ export const updateCustomer = async (req, res) => {
       runValidators: true,
     });
     if (!updatedCustomer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng để cập nhật",
       });
@@ -89,7 +126,7 @@ export const deleteCustomer = async (req, res) => {
     const { id } = req.params;
     const deletedCustomer = await Customer.findByIdAndDelete(id);
     if (!deletedCustomer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng để xóa",
       });
@@ -113,7 +150,7 @@ export const getCustomerByPhone = async (req, res) => {
     const { phone } = req.params;
     const customer = await Customer.findOne({ phone });
     if (!customer) {
-      return res.status(404).json({
+      return res.status(400).json({
         success: false,
         message: "Không tìm thấy khách hàng",
       });

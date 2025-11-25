@@ -9,7 +9,7 @@ const seatSchema = new mongoose.Schema(
       required: [true, "Tên ghế là bắt buộc"],
       trim: true,
     },
-    location: {
+    locationId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Location",
       required: false
@@ -26,13 +26,7 @@ const seatSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
-    trickIds: {
-      type: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Trick"
-      }],
-      default: [],
-    },
+    
     isDeleted: {
       type: Number,
       enum: Object.values(IS_DELETED),

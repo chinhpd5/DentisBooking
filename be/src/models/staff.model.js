@@ -3,17 +3,29 @@ import mongoosePaginate from "mongoose-paginate-v2";
 import { USER_ROLE, STAFF_STATUS, IS_DELETED } from "../utils/constants";
 
 const shiftSchema = new mongoose.Schema({
-  start: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 1439 // tối đa 23:59
+  morning: {
+    start: {
+      type: Number,
+      min: 0,
+      max: 1439
+    },
+    end: {
+      type: Number,
+      min: 0,
+      max: 1439
+    }
   },
-  end: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 1439
+  afternoon: {
+    start: {
+      type: Number,
+      min: 0,
+      max: 1439
+    },
+    end: {
+      type: Number,
+      min: 0,
+      max: 1439
+    }
   }
 }, { _id: false });
 
@@ -36,32 +48,32 @@ const staffSchema = new mongoose.Schema({
     type: String,
   },
   scheduleMonday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   scheduleTuesday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   scheduleWednesday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   scheduleThursday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   scheduleFriday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   scheduleSaturday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   scheduleSunday: {
-    type: [shiftSchema],
-    default: []
+    type: shiftSchema,
+    required: false
   },
   status: {
     type: Number,

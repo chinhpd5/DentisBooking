@@ -11,14 +11,16 @@ import {
   createLocationSchema,
   updateLocationSchema
 } from "../validations/location.validate";
-import { checkAuth,checkAdminStaff } from "../middlewares/checkAuth";
+import { checkAuth,checkAdmin } from "../middlewares/checkAuth";
 
 const router = express.Router();
 
-router.use(checkAuth, checkAdminStaff);
-router.post("/", validateRequest(createLocationSchema), createLocation);
+router.use(checkAuth);
 router.get("/", getAllLocations);
 router.get("/:id", getLocationById);
+
+router.use(checkAdmin);
+router.post("/", validateRequest(createLocationSchema), createLocation);
 router.put("/:id", validateRequest(updateLocationSchema), updateLocation);
 router.delete("/:id", deleteLocation);
 
