@@ -95,6 +95,36 @@ const hasBookingConflict = async (doctorId, timeStart, timeEnd, excludeBookingId
   return !!conflict;
 };
 
+// Helper function to check maximum bookings in a 30-minute slot for TRICK type
+// Returns true if slot is full (>= 3 bookings), false otherwise
+const isTrickSlotFull = async (appointmentDate) => {
+  // Calculate the 30-minute slot boundaries
+  const appointmentTime = new Date(appointmentDate);
+  const minutes = appointmentTime.getMinutes();
+  const slotStartMinutes = Math.floor(minutes / 30) * 30; // Round down to nearest 30 minutes
+  
+  // Create slot start and end times
+  const slotStart = new Date(appointmentTime);
+  slotStart.setMinutes(slotStartMinutes, 0, 0);
+  
+  const slotEnd = new Date(slotStart);
+  slotEnd.setMinutes(slotEnd.getMinutes() + 30);
+  
+  // Count bookings in this 30-minute slot (TRICK type only, not cancelled)
+  const bookingCount = await Booking.countDocuments({
+    type: SERVICE_TYPE.TRICK,
+    isDeleted: IS_DELETED.NO,
+    status: { $ne: BOOKING_STATUS.CANCELLED },
+    appointmentDate: {
+      $gte: slotStart,
+      $lt: slotEnd,
+    },
+  });
+  
+  // Return true if slot is full (>= 3 bookings)
+  return bookingCount >= 3;
+};
+
 // Helper function to auto-assign staff for jobIds
 const autoAssignStaffForJobs = async (bookingId, service, appointmentDate, timeEnd) => {
   if (!service.jobIds || service.jobIds.length === 0 || !service.countStaff) {
@@ -134,22 +164,9 @@ const autoAssignStaffForJobs = async (bookingId, service, appointmentDate, timeE
   const timeStart = new Date(appointmentDate);
   const timeEndDate = new Date(timeStart.getTime() + totalJobTime * 1000); // Convert seconds to milliseconds
   
-  // Find available staff for the entire time period (all jobs)
-  const assignedStaff = [];
-  for (const staff of availableStaff) {
-    if (assignedStaff.length >= countStaff) break;
-    
-    const hasConflict = await hasStaffAssignmentConflict(
-      staff._id,
-      timeStart,
-      timeEndDate,
-      bookingId
-    );
-    
-    if (!hasConflict) {
-      assignedStaff.push(staff);
-    }
-  }
+  // For TRICK type with countStaff, assign staff without checking conflicts (allow overlapping)
+  // Just take the first countStaff staff members without conflict check
+  const assignedStaff = availableStaff.slice(0, countStaff);
   
   if (assignedStaff.length < countStaff) {
     throw new Error(`Không đủ KTV khả dụng. Cần ${countStaff} KTV nhưng chỉ có ${assignedStaff.length} KTV khả dụng`);
@@ -197,21 +214,14 @@ export const createBooking = async (req, res) => {
     
     // Check for conflicts based on service type
     if (serviceType === SERVICE_TYPE.TRICK) {
-      // For trick, check doctor conflict in Booking
-      if (data.doctorId) {
-        const hasConflict = await hasBookingConflict(
-          data.doctorId,
-          data.appointmentDate,
-          data.timeEnd
-        );
-        
-        if (hasConflict) {
-          
-          return res.status(409).json({
-            success: false,
-            message: 'Bác sĩ đã có lịch hẹn trong khoảng thời gian này',
-          });
-        }
+      // For trick, check maximum 3 bookings per 30-minute slot (no conflict check)
+      const slotFull = await isTrickSlotFull(data.appointmentDate);
+      
+      if (slotFull) {
+        return res.status(409).json({
+          success: false,
+          message: 'Khung giờ này đã đầy (tối đa 3 lịch hẹn trong 30 phút)',
+        });
       }
     } else if (serviceType === SERVICE_TYPE.JOB) {
       // For job, check staff conflict in StaffAssignment
@@ -512,6 +522,9 @@ export const softDeleteBooking = async (req, res) => {
       });
     }
 
+    // Xóa tất cả staff assignments liên quan đến booking này
+    await StaffAssignment.deleteMany({ bookingId: req.params.id });
+
     booking.isDeleted = IS_DELETED.YES;
     await booking.save();
 
@@ -545,6 +558,9 @@ export const hardDeleteBooking = async (req, res) => {
       });
     }
 
+    // Xóa tất cả staff assignments liên quan đến booking này
+    await StaffAssignment.deleteMany({ bookingId: req.params.id });
+
     await booking.deleteOne();
 
     res.status(200).json({
@@ -564,7 +580,7 @@ export const hardDeleteBooking = async (req, res) => {
 export const updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, comingTime, doingTime, completeTime } = req.body;
+    const { status, comingTime, doingTime, completeTime, cancellationReason } = req.body;
 
     if (!Object.values(BOOKING_STATUS).includes(status)) {
       return res.status(400).json({
@@ -606,6 +622,10 @@ export const updateBookingStatus = async (req, res) => {
     // Chuyển từ "Đang làm" sang "Hoàn thành" → lưu completeTime
     else if (oldStatus === BOOKING_STATUS.IN_PROGRESS && newStatus === BOOKING_STATUS.COMPLETED) {
       booking.completeTime = completeTime ? new Date(completeTime) : currentTime;
+    }
+    // Chuyển sang "Hủy" → lưu cancellationReason
+    else if (newStatus === BOOKING_STATUS.CANCELLED) {
+      booking.cancellationReason = cancellationReason || "";
     }
 
     booking.status = newStatus;

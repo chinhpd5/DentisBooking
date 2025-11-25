@@ -202,7 +202,7 @@ export const updateSeatStatus = async (req, res) => {
       });
     }
 
-    const seat = await Seat.findById(id);
+    const seat = await Seat.findById(id).populate('locationId');
     if (!seat) {
       return res.status(400).json({
         success: false,
@@ -210,8 +210,22 @@ export const updateSeatStatus = async (req, res) => {
       });
     }
 
+    const oldStatus = seat.status;
     seat.status = status;
     await seat.save();
+
+    // Emit socket event để thông báo real-time cho các client khác
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('seatStatusChanged', {
+        seatId: seat._id,
+        seatName: seat.name,
+        oldStatus: oldStatus,
+        newStatus: status,
+        location: seat.locationId?.name || 'N/A',
+        timestamp: new Date().toISOString()
+      });
+    }
 
     res.status(200).json({
       success: true,

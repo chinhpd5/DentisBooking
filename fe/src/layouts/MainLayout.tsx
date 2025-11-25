@@ -21,8 +21,12 @@ import logoImage from "../assets/logo.jpg";
 import "../assets/layout.css";
 import { Outlet } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
+import { useQueryClient } from "@tanstack/react-query";
+import socketService from "../services/socket";
+import notificationSound from "../assets/notification.mp3";
+import { SEAT_STATUS } from "../contants";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -115,6 +119,8 @@ function MainLayout() {
   const [userRole, setUserRole] = useState<string>("");
   const [userName, setUserName] = useState<string>("Admin");
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const queryClient = useQueryClient();
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     const role = localStorage.getItem("roleDentis") || "";
@@ -122,6 +128,68 @@ function MainLayout() {
     setUserRole(role);
     setUserName(name);
   }, []);
+
+  // Khởi tạo audio element
+  useEffect(() => {
+    audioRef.current = new Audio(notificationSound);
+    audioRef.current.volume = 0.5; // Điều chỉnh âm lượng (0.0 - 1.0)
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
+  // Kết nối socket và lắng nghe events cho seat status changes
+  useEffect(() => {
+    const socket = socketService.connect();
+
+    const handleSeatStatusChanged = (data: {
+      seatId: string;
+      seatName: string;
+      oldStatus: number;
+      newStatus: number;
+      location: string;
+      timestamp: string;
+    }) => {
+      // Chỉ thông báo khi thay đổi giữa AVAILABLE và USING
+      if (
+        (data.oldStatus === SEAT_STATUS.AVAILABLE && data.newStatus === SEAT_STATUS.USING) ||
+        (data.oldStatus === SEAT_STATUS.USING && data.newStatus === SEAT_STATUS.AVAILABLE)
+      ) {
+        // Phát âm thanh thông báo
+        if (audioRef.current) {
+          audioRef.current.play().catch((error) => {
+            console.error('Error playing notification sound:', error);
+          });
+        }
+
+        // Hiển thị toast thông báo
+        const statusText = data.newStatus === SEAT_STATUS.AVAILABLE 
+          ? 'Sẵn sàng' 
+          : 'Đang sử dụng';
+        
+        toast.success(
+          `Ghế "${data.seatName}" (${data.location}) đã chuyển sang trạng thái: ${statusText}`,
+          {
+            duration: 4000,
+            position: 'top-right',
+          }
+        );
+
+        // Cập nhật cache để refresh danh sách
+        queryClient.invalidateQueries({ queryKey: ["seats"] });
+      }
+    };
+
+    socket.on('seatStatusChanged', handleSeatStatusChanged);
+
+    return () => {
+      socket.off('seatStatusChanged', handleSeatStatusChanged);
+    };
+  }, [queryClient]);
 
   const menuItems = useMemo(() => {
     if (userRole === USER_ROLE.ADMIN) {
@@ -285,10 +353,10 @@ function MainLayout() {
         />
       )}
 
-      <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-open' : ''}`}>
+      <aside style={{backgroundColor: '#012445'}} className={`sidebar ${sidebarCollapsed ? 'sidebar-open' : ''}`}>
         <div className="branding">
           <img src={logoImage} alt="logo" className="logo" />
-          <h3 className="title">Đặt lịch Xiêm Anh</h3>
+          <h3 className="title">Xiêm Anh Smile</h3>
         </div>
         <Menu
           onClick={(e) => {
@@ -298,7 +366,7 @@ function MainLayout() {
               setSidebarCollapsed(false);
             }
           }}
-          style={{ width: 250 }}
+          style={{ width: 250, backgroundColor: '#012445' }}
           defaultSelectedKeys={["1"]}
           defaultOpenKeys={["sub1"]}
           mode="inline"

@@ -64,6 +64,13 @@ export const updateBookingStatusSchema = Joi.object({
   comingTime: Joi.date().optional(),
   doingTime: Joi.date().optional(),
   completeTime: Joi.date().optional(),
+  cancellationReason: Joi.string().when('status', {
+    is: Joi.string().valid(BOOKING_STATUS.CANCELLED),
+    then: Joi.string().required().messages({
+      "any.required": "Lý do hủy là bắt buộc khi trạng thái là Hủy",
+    }),
+    otherwise: Joi.string().allow("").optional(),
+  }),
 });
 
 export const modifyBookingStaffSchema = Joi.object({

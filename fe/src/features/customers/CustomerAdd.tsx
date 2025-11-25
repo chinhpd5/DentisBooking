@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Toast from "react-hot-toast";
 import { CreateCustomer } from "../../types/customer";
 import { addCustomer } from "../../services/customer";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 
@@ -40,7 +41,12 @@ function CustomerAdd() {
 
   return (
     <div>
-      <h2>Thêm mới khách hàng</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới khách hàng</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/customer")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>

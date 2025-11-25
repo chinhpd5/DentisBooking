@@ -10,7 +10,7 @@ import dayjs from "dayjs";
 import { useMemo } from "react";
 import { getAllStaff } from "../../services/staff";
 import { convertNameRole } from "../../utils/helper";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -109,7 +109,12 @@ function TrickAdd() {
 
   return (
     <div>
-      <h2>Thêm mới thủ thuật</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới thủ thuật</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/trick")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
@@ -158,7 +163,7 @@ function TrickAdd() {
                   name="countStaff"
                   label="Số lượng KTV đi kèm"
                   rules={[
-                    { required: true, message: "Vui lòng nhập Số lượng KTV đi kèm" },
+                    // { required: true, message: "Vui lòng nhập Số lượng KTV đi kèm" },
                     { type: "number", min: 0 , message: "Số lượng nhân viên phải lớn hơn hoặc bằng 0" },
                   ]}
                 >
@@ -166,6 +171,7 @@ function TrickAdd() {
                     placeholder="Nhập Số lượng KTV đi kèm"
                     style={{ width: "100%" }}
                     min={0}
+                    defaultValue={0}
                     onChange={() => form.validateFields(["jobIds"])}
                   />
                 </Form.Item>

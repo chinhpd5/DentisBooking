@@ -48,11 +48,12 @@ export const updateBooking = (id: string, data: Partial<CreateBooking>) =>
 export const deleteBooking = (id: string) =>
   axiosInstance.delete(`/booking/${id}`);
 
-export const updateBookingStatus = (id: string, status: BOOKING_STATUS, comingTime?: Date, doingTime?: Date, completeTime?: Date) => {
-  const payload: { status: BOOKING_STATUS; comingTime?: Date; doingTime?: Date; completeTime?: Date } = { status };
+export const updateBookingStatus = (id: string, status: BOOKING_STATUS, comingTime?: Date, doingTime?: Date, completeTime?: Date, cancellationReason?: string) => {
+  const payload: { status: BOOKING_STATUS; comingTime?: Date; doingTime?: Date; completeTime?: Date; cancellationReason?: string } = { status };
   if (comingTime) payload.comingTime = comingTime;
   if (doingTime) payload.doingTime = doingTime;
   if (completeTime) payload.completeTime = completeTime;
+  if (cancellationReason !== undefined) payload.cancellationReason = cancellationReason;
   return axiosInstance.patch(`/booking/${id}/status`, payload);
 };
 

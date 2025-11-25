@@ -4,10 +4,16 @@ import path from 'path';
 import dotenv from 'dotenv';
 import routers from "./routers";
 import cors from "cors";
+import { createServer } from "http";
+import { Server } from "socket.io";
+import { log } from "console";
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+
+
 
 // Cấu hình CORS
 const corsOptions = {
@@ -35,6 +41,24 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
+
+// Cấu hình Socket.io
+const io = new Server(httpServer, {
+  cors: corsOptions,
+  transports: ['websocket', 'polling']
+});
+
+// Lưu io instance để sử dụng trong controllers
+app.set('io', io);
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
 
 // kết nối cơ sở dữ liệu
 mongoose.connect(process.env.CONNECT_MONGODB_URL)
@@ -85,6 +109,10 @@ app.use((err, req, res, next) => {
 });
 
 const port = process.env.PORT || 3000
-app.listen(port, () => {
+httpServer.listen(port, () => {
     console.log(`Server is running on port http://localhost:${port}`);
+    console.log(`Socket.io server is ready`);
 });
+
+// Export io để sử dụng trong các module khác nếu cần
+export { io };

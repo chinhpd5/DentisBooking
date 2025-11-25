@@ -13,6 +13,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Toast from "react-hot-toast";
+import { useEffect } from "react";
 import { getCustomerById, updateCustomer } from "../../services/customer";
 import ICustomer, { CreateCustomer } from "../../types/customer";
 
@@ -30,14 +31,19 @@ function CustomerEdit() {
     enabled: !!id,
   });
 
-  // Format customer data for form
-  const formatCustomerData = (data: ICustomer | undefined) => {
-    if (!data) return {};
-    return {
-      ...data,
-      yearOfBirth: (data as ICustomer & { yearOfBirth?: number }).yearOfBirth,
-    };
-  };
+  // Update form when customer data is loaded
+  useEffect(() => {
+    if (customer) {
+      form.setFieldsValue({
+        name: customer.name,
+        phone: customer.phone,
+        address: customer.address,
+        gender: customer.gender,
+        note: customer.note,
+        yearOfBirth: customer.yearOfBirth,
+      });
+    }
+  }, [customer, form]);
 
   const { mutate, isPending } = useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<CreateCustomer> }) =>
@@ -52,7 +58,7 @@ function CustomerEdit() {
     // },
   });
 
-  const onFinish = (values: Partial<CreateCustomer> & { yearOfBirth?: number }) => {
+  const onFinish = (values: Partial<CreateCustomer> & { yearOfBirth?: number | null }) => {
     if (id) {
       const submitData: Record<string, unknown> = {};
       if (values.name) submitData.name = values.name;
@@ -60,7 +66,10 @@ function CustomerEdit() {
       if (values.address) submitData.address = values.address;
       if (values.gender) submitData.gender = values.gender;
       if (values.note !== undefined) submitData.note = values.note;
-      if (values.yearOfBirth !== undefined) submitData.yearOfBirth = values.yearOfBirth;
+      // Allow clearing yearOfBirth by sending null/undefined
+      if (values.yearOfBirth !== undefined) {
+        submitData.yearOfBirth = values.yearOfBirth ?? null;
+      }
       mutate({ id, data: submitData as Partial<CreateCustomer> });
     }
   };
@@ -72,7 +81,7 @@ function CustomerEdit() {
       <h2>Cập nhật khách hàng</h2>
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
-          <Form form={form} onFinish={onFinish} layout="vertical" initialValues={formatCustomerData(customer)}>
+          <Form form={form} onFinish={onFinish} layout="vertical">
             <Row gutter={24}>
               <Col span={12}>
                 <Form.Item

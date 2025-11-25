@@ -31,7 +31,7 @@ router.patch("/:id/status", validateRequest(updateBookingStatusSchema), updateBo
 router.use(checkAdminReceptionist);
 router.post("/", validateRequest(createBookingSchema), createBooking);
 router.put("/:id", validateRequest(updateBookingSchema), updateBooking);
-router.delete("/:id", softDeleteBooking);
+router.delete("/:id", hardDeleteBooking);
 
 // Staff assignment123
 router.post(

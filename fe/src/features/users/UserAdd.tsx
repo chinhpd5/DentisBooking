@@ -6,7 +6,7 @@ import { CreateUser } from "../../types/user";
 import { convertNameRoleArray } from "../../utils/helper";
 import { USER_STATUS } from "../../contants";
 import { addUser } from "../../services/user";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 const { Option } = Select;
 const dataRole = convertNameRoleArray();
 
@@ -39,7 +39,12 @@ function UserAdd() {
 
   return (
     <div>
-      <h2>Thêm mới tài khoản người dùng</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới tài khoản người dùng</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/user")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>

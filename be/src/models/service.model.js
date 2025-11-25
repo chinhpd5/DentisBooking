@@ -37,7 +37,8 @@ const serviceSchema = new mongoose.Schema({
     default: [],
   },
   countStaff: {
-    type: Number
+    type: Number,
+    default: 0,
   },
   status: {
     type: Number,

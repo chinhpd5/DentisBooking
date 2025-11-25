@@ -4,6 +4,21 @@ import { IS_DELETED, SERVICE_STATUS } from "../utils/constants";
 export const createService = async (req, res) => {
   try {
     const data = req.body;
+    
+    if (data.name) {
+      const duplicateName = await Service.findOne({
+        isDeleted: IS_DELETED.NO,
+        name: data.name,
+      });
+    }
+
+    if (duplicateName) {
+      return res.status(400).json({
+        success: false,
+        message: "Tên dịch vụ đã tồn tại trong hệ thống",
+      });
+    }
+    
     const newService = await Service.create(data);
     res.status(201).json({
       success: true,

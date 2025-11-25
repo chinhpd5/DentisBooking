@@ -7,6 +7,7 @@ import { addSeat } from "../../services/seat";
 import { getListLocation } from "../../services/location";
 import { SEAT_STATUS } from "../../contants";
 import ILocation from "../../types/location";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -52,7 +53,12 @@ function SeatAdd() {
 
   return (
     <div>
-      <h2>Thêm mới ghế</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới ghế</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/seat")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>

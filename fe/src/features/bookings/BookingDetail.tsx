@@ -84,6 +84,14 @@ function BookingDetail() {
             {getStatusTag(booking.status)}
           </Descriptions.Item>
 
+          {booking.status === BOOKING_STATUS.CANCELLED && booking.cancellationReason && (
+            <Descriptions.Item label="Lý do hủy">
+              <div style={{ maxWidth: 600, wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>
+                {booking.cancellationReason}
+              </div>
+            </Descriptions.Item>
+          )}
+
           <Descriptions.Item label="Ưu tiên">
             {booking.priority ? <Tag color="red">Có</Tag> : <Tag>Không</Tag>}
           </Descriptions.Item>

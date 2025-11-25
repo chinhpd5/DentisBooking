@@ -479,6 +479,32 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     return null;
   }, [bookingsByStaff, timeSlots]);
 
+  // Count TRICK bookings in a 30-minute slot for a specific staff
+  const countTrickBookingsInSlot = useCallback((staffId: string, slotIndex: number): number => {
+    const slot = timeSlots[slotIndex];
+    if (!slot) return 0;
+
+    let count = 0;
+    bookingDisplays.forEach((display) => {
+      // Only count TRICK type bookings for this specific staff
+      if (
+        display.staffId === staffId &&
+        display.booking.type === "trick" &&
+        display.booking.status !== BOOKING_STATUS.CANCELLED
+      ) {
+        const appointmentTime = dayjs(display.booking.appointmentDate);
+        // Check if appointment time falls within this 30-minute slot
+        if (
+          appointmentTime.isSameOrAfter(slot.start, "minute") &&
+          appointmentTime.isBefore(slot.end, "minute")
+        ) {
+          count++;
+        }
+      }
+    });
+    return count;
+  }, [bookingDisplays, timeSlots]);
+
   const handleCellClick = useCallback((staffId: string, slot: TimeSlot) => {
     const staff = staffMap.get(staffId);
     if (!staff) return;
@@ -489,18 +515,27 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
       return;
     }
 
-    // Kiểm tra xem có bị chiếm hoàn toàn không
-    const occupiedBooking = isSlotOccupied(staffId, slot.index);
-    if (occupiedBooking) {
-      // Kiểm tra xem slot có bị chiếm hoàn toàn hay chỉ một phần
-      const slotEndTime = slot.end;
-      if (occupiedBooking.actualEndTime.isBefore(slotEndTime, "minute")) {
-        // Booking chỉ chiếm một phần slot, phần còn lại vẫn có thể chọn
-        // Không hiển thị warning, cho phép chọn
-      } else {
-        // Slot bị chiếm hoàn toàn
-        message.warning("Khung giờ này đã được đặt");
+    // Với TRICK type: check số lượng booking trong slot (tối đa 3)
+    if (service?.type === "trick") {
+      const bookingCount = countTrickBookingsInSlot(staffId, slot.index);
+      if (bookingCount >= 3) {
+        message.warning("Khung giờ này đã đầy (tối đa 3 lịch hẹn trong 30 phút)");
         return;
+      }
+    } else {
+      // Với JOB type: giữ nguyên logic cũ (check conflict)
+      const occupiedBooking = isSlotOccupied(staffId, slot.index);
+      if (occupiedBooking) {
+        // Kiểm tra xem slot có bị chiếm hoàn toàn hay chỉ một phần
+        const slotEndTime = slot.end;
+        if (occupiedBooking.actualEndTime.isBefore(slotEndTime, "minute")) {
+          // Booking chỉ chiếm một phần slot, phần còn lại vẫn có thể chọn
+          // Không hiển thị warning, cho phép chọn
+        } else {
+          // Slot bị chiếm hoàn toàn
+          message.warning("Khung giờ này đã được đặt");
+          return;
+        }
       }
     }
 
@@ -591,6 +626,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     setSelectedCell,
     setTimeEditModalOpen,
     timeEditForm,
+    countTrickBookingsInSlot,
   ]);
 
   const handleConfirmTime = async () => {
@@ -729,8 +765,28 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
 
           const slot = record.slot;
           const inWorkingHours = isSlotInWorkingHours(staff, record.slotIndex);
-          const occupied = isSlotOccupied(staff._id, record.slotIndex);
-          const canSelect = inWorkingHours && !occupied;
+          
+          // Với TRICK type: check số lượng booking trong slot
+          let canSelect = false;
+          let bookingCount = 0;
+          let displayText = "Nghỉ làm";
+          
+          if (service?.type === "trick") {
+            bookingCount = countTrickBookingsInSlot(staff._id, record.slotIndex);
+            canSelect = inWorkingHours && bookingCount < 3;
+            if (inWorkingHours) {
+              displayText = bookingCount >= 3 
+                ? `Đã đầy (${bookingCount}/3)` 
+                : bookingCount > 0 
+                  ? `Có thể chọn (${bookingCount}/3)` 
+                  : "Có thể chọn";
+            }
+          } else {
+            // Với JOB type: giữ nguyên logic cũ
+            const occupied = isSlotOccupied(staff._id, record.slotIndex);
+            canSelect = inWorkingHours && !occupied;
+            displayText = canSelect ? "Có thể chọn" : "Nghỉ làm";
+          }
 
           return {
             children: (
@@ -742,8 +798,11 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                   borderRadius: 4,
                   minHeight: 100,
                   cursor: canSelect ? "pointer" : "not-allowed",
-                  border: "1px solid #e0e0e0",
+                  border: canSelect && service?.type === "trick" && bookingCount > 0 
+                    ? "1px solid #ff9800" 
+                    : "1px solid #e0e0e0",
                   display: "flex",
+                  flexDirection: "column",
                   alignItems: "center",
                   justifyContent: "center",
                   color: canSelect ? "#333" : "#999",
@@ -758,11 +817,19 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                 onMouseLeave={(e) => {
                   if (canSelect) {
                     e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.borderColor = "#e0e0e0";
+                    e.currentTarget.style.borderColor = 
+                      service?.type === "trick" && bookingCount > 0 
+                        ? "#ff9800" 
+                        : "#e0e0e0";
                   }
                 }}
               >
-                {canSelect ? "Có thể chọn" : "Nghỉ làm"}
+                <div>{displayText}</div>
+                {service?.type === "trick" && bookingCount > 0 && (
+                  <div style={{ fontSize: 10, color: "#ff9800", marginTop: 4 }}>
+                    {bookingCount}/3 lịch
+                  </div>
+                )}
               </div>
             ),
             props: {},
@@ -779,12 +846,31 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         const inWorkingHours = isSlotInWorkingHours(staff, record.slotIndex);
         const lastDisplay = items[items.length - 1];
         const hasRemainingTime = lastDisplay && lastDisplay.actualEndTime.isBefore(slot.end, "minute");
-        const canSelectRemaining = hasRemainingTime && inWorkingHours;
+        
+        // Với TRICK type: check số lượng booking trong slot và luôn hiển thị ô chọn nếu chưa đủ 3
+        let canSelectRemaining = false;
+        let remainingBookingCount = 0;
+        let remainingDisplayText = "Có thể chọn";
+        
+        if (service?.type === "trick") {
+          remainingBookingCount = countTrickBookingsInSlot(staff._id, record.slotIndex);
+          // Luôn cho phép chọn nếu chưa đủ 3 lịch, không cần kiểm tra hasRemainingTime
+          canSelectRemaining = inWorkingHours && remainingBookingCount < 3;
+          if (canSelectRemaining) {
+            remainingDisplayText = remainingBookingCount > 0 
+              ? `Chọn thêm (${remainingBookingCount}/3)` 
+              : "Có thể chọn";
+          }
+        } else {
+          // Với JOB type: giữ nguyên logic cũ
+          canSelectRemaining = hasRemainingTime && inWorkingHours;
+        }
 
         return {
           children: (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {items.map((display) => {
+            <div style={{ display: "flex", flexDirection: "row", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
+                {items.map((display) => {
                 const isAssignment = display.type === "assignment";
                 const booking = display.booking;
                 const assignment = display.assignment;
@@ -858,6 +944,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                   </div>
                 );
               })}
+              </div>
               {canSelectRemaining && (
                 <div
                   onClick={() => handleCellClick(staff._id, slot)}
@@ -865,26 +952,43 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
                     backgroundColor: "#ffffff",
                     padding: 8,
                     borderRadius: 4,
+                    minWidth: 100,
                     minHeight: 60,
                     cursor: "pointer",
-                    border: "1px solid #e0e0e0",
+                    border: service?.type === "trick" && remainingBookingCount > 0 
+                      ? "2px solid #ff9800" 
+                      : "2px dashed #1890ff",
                     display: "flex",
+                    flexDirection: "column",
                     alignItems: "center",
                     justifyContent: "center",
                     color: "#333",
                     transition: "all 0.2s",
-                    marginTop: 4,
+                    flexShrink: 0,
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = "#e6f7ff";
                     e.currentTarget.style.borderColor = "#1890ff";
+                    e.currentTarget.style.borderStyle = "solid";
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = "#ffffff";
-                    e.currentTarget.style.borderColor = "#e0e0e0";
+                    e.currentTarget.style.borderColor = 
+                      service?.type === "trick" && remainingBookingCount > 0 
+                        ? "#ff9800" 
+                        : "#1890ff";
+                    e.currentTarget.style.borderStyle = 
+                      service?.type === "trick" && remainingBookingCount > 0 
+                        ? "solid" 
+                        : "dashed";
                   }}
                 >
-                  Có thể chọn
+                  <div style={{ fontWeight: 500, fontSize: 12 }}>{remainingDisplayText}</div>
+                  {service?.type === "trick" && remainingBookingCount > 0 && (
+                    <div style={{ fontSize: 10, color: "#ff9800", marginTop: 4 }}>
+                      {remainingBookingCount}/3 lịch
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -905,6 +1009,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     isSlotInWorkingHours,
     isSlotOccupied,
     handleCellClick,
+    countTrickBookingsInSlot,
   ]);
 
   const tableDataSource = useMemo(

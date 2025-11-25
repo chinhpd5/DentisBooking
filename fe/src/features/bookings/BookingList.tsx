@@ -29,9 +29,13 @@ type FilterType = {
 function BookingList() {
   const [form] = Form.useForm();
   const [timeForm] = Form.useForm();
+  const today = dayjs().format("YYYY-MM-DD");
+  const tomorrow = dayjs().add(1, 'day').format("YYYY-MM-DD");
   const [filter, setFilter] = useState<FilterType>({
     currentPage: 1,
     pageSize: 10,
+    fromDate: today,
+    toDate: tomorrow,
   });
   const [pendingStatusChange, setPendingStatusChange] = useState<{
     id: string;
@@ -39,6 +43,14 @@ function BookingList() {
     newStatus: BOOKING_STATUS;
   } | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
+
+  // Set giá trị mặc định cho form khi component mount
+  useEffect(() => {
+    const todayRange: [Dayjs, Dayjs] = [dayjs(), dayjs().add(1, 'day')];
+    form.setFieldsValue({
+      dateRange: todayRange,
+    });
+  }, [form]);
 
   // Cập nhật thời gian hiện tại mỗi giây để đồng hồ chạy
   useEffect(() => {
@@ -83,13 +95,14 @@ function BookingList() {
   });
 
   const updateStatusMutation = useMutation({
-    mutationFn: ({ id, status, comingTime, doingTime, completeTime }: { 
+    mutationFn: ({ id, status, comingTime, doingTime, completeTime, cancellationReason }: { 
       id: string; 
       status: BOOKING_STATUS;
       comingTime?: Date;
       doingTime?: Date;
       completeTime?: Date;
-    }) => updateBookingStatus(id, status, comingTime, doingTime, completeTime),
+      cancellationReason?: string;
+    }) => updateBookingStatus(id, status, comingTime, doingTime, completeTime, cancellationReason),
     onSuccess: () => {
       toast.success("Cập nhật trạng thái thành công");
       queryClient.invalidateQueries({ queryKey: ["bookings"] });
@@ -129,7 +142,7 @@ function BookingList() {
     // Lưu thông tin thay đổi để hiển thị confirm
     setPendingStatusChange({ id, oldStatus, newStatus });
     
-    // Reset form và set giá trị mặc định là thời gian hiện tại
+    // Reset form và set giá trị mặc định là thời gian hiện tại hoặc lý do hủy
     timeForm.resetFields();
     if (oldStatus === BOOKING_STATUS.BOOKED && newStatus === BOOKING_STATUS.ARRIVED) {
       timeForm.setFieldValue('comingTime', dayjs());
@@ -137,6 +150,8 @@ function BookingList() {
       timeForm.setFieldValue('doingTime', dayjs());
     } else if (oldStatus === BOOKING_STATUS.IN_PROGRESS && newStatus === BOOKING_STATUS.COMPLETED) {
       timeForm.setFieldValue('completeTime', dayjs());
+    } else if (newStatus === BOOKING_STATUS.CANCELLED) {
+      timeForm.setFieldValue('cancellationReason', '');
     }
   };
 
@@ -145,19 +160,22 @@ function BookingList() {
     
     const { id, oldStatus, newStatus } = pendingStatusChange;
     
-    // Kiểm tra xem có cần nhập thời gian không
+    // Kiểm tra xem có cần nhập thời gian hoặc lý do hủy không
     const needsTime = (
       (oldStatus === BOOKING_STATUS.BOOKED && newStatus === BOOKING_STATUS.ARRIVED) ||
       (oldStatus === BOOKING_STATUS.ARRIVED && newStatus === BOOKING_STATUS.IN_PROGRESS) ||
       (oldStatus === BOOKING_STATUS.IN_PROGRESS && newStatus === BOOKING_STATUS.COMPLETED)
     );
     
-    if (needsTime) {
+    const needsCancellationReason = newStatus === BOOKING_STATUS.CANCELLED;
+    
+    if (needsTime || needsCancellationReason) {
       // Validate form trước khi submit
       timeForm.validateFields().then((values) => {
         const comingTime = values.comingTime ? values.comingTime.toDate() : undefined;
         const doingTime = values.doingTime ? values.doingTime.toDate() : undefined;
         const completeTime = values.completeTime ? values.completeTime.toDate() : undefined;
+        const cancellationReason = values.cancellationReason || undefined;
 
         updateStatusMutation.mutate(
           { 
@@ -166,6 +184,7 @@ function BookingList() {
             comingTime,
             doingTime,
             completeTime,
+            cancellationReason,
           },
           {
             onSuccess: () => {
@@ -182,7 +201,7 @@ function BookingList() {
         // Validation failed
       });
     } else {
-      // Không cần thời gian, gửi luôn
+      // Không cần thời gian hoặc lý do hủy, gửi luôn
       updateStatusMutation.mutate(
         { 
           id, 
@@ -209,7 +228,7 @@ function BookingList() {
     queryClient.invalidateQueries({ queryKey: ["bookings"] });
   };
 
-  // Kiểm tra có cần hiển thị input thời gian không
+  // Kiểm tra có cần hiển thị input thời gian hoặc lý do hủy không
   const needsTimeInput = (): boolean => {
     if (!pendingStatusChange) return false;
     const { oldStatus, newStatus } = pendingStatusChange;
@@ -218,6 +237,13 @@ function BookingList() {
       (oldStatus === BOOKING_STATUS.ARRIVED && newStatus === BOOKING_STATUS.IN_PROGRESS) ||
       (oldStatus === BOOKING_STATUS.IN_PROGRESS && newStatus === BOOKING_STATUS.COMPLETED)
     );
+  };
+
+  // Kiểm tra có cần hiển thị input lý do hủy không
+  const needsCancellationReasonInput = (): boolean => {
+    if (!pendingStatusChange) return false;
+    const { newStatus } = pendingStatusChange;
+    return newStatus === BOOKING_STATUS.CANCELLED;
   };
 
   // Lấy label cho input thời gian
@@ -317,7 +343,12 @@ function BookingList() {
   };
 
   const handleReset = () => {
-    form.resetFields();
+    const today = dayjs().format("YYYY-MM-DD");
+    const tomorrow = dayjs().add(1, 'day').format("YYYY-MM-DD");
+    const todayRange: [Dayjs, Dayjs] = [dayjs(), dayjs().add(1, 'day')];
+    form.setFieldsValue({
+      dateRange: todayRange,
+    });
     setFilter({
       currentPage: 1,
       pageSize: 10,
@@ -325,8 +356,8 @@ function BookingList() {
       status: undefined,
       doctorId: undefined,
       staffId: undefined,
-      fromDate: undefined,
-      toDate: undefined,
+      fromDate: today,
+      toDate: tomorrow,
     });
   };
 
@@ -470,6 +501,13 @@ function BookingList() {
       title: "Ưu tiên",
       dataIndex: "priority",
       render: (priority: boolean) => (priority ? <Tag color="red">Có</Tag> : <Tag>Không</Tag>),
+    },
+    {
+      title: "Lý do hủy",
+      render: (record: IBooking) =>
+        record.status === BOOKING_STATUS.CANCELLED && record.cancellationReason
+          ? <div style={{ maxWidth: 200, wordBreak: 'break-word' }}>{record.cancellationReason}</div>
+          : "-",
     },
     {
       title: "",
@@ -633,20 +671,36 @@ function BookingList() {
               <strong>{getStatusText(pendingStatusChange.newStatus)}</strong>?
             </p>
             
-            {needsTimeInput() && (
+            {(needsTimeInput() || needsCancellationReasonInput()) && (
               <Form form={timeForm} layout="vertical" style={{ marginTop: 16 }}>
-                <Form.Item
-                  name={getTimeFieldName()}
-                  label={getTimeInputLabel()}
-                  rules={[{ required: true, message: `Vui lòng nhập ${getTimeInputLabel().toLowerCase()}` }]}
-                >
-                  <DatePicker
-                    showTime
-                    format="DD/MM/YYYY HH:mm:ss"
-                    style={{ width: "100%" }}
-                    placeholder={`Chọn ${getTimeInputLabel().toLowerCase()}`}
-                  />
-                </Form.Item>
+                {needsTimeInput() && (
+                  <Form.Item
+                    name={getTimeFieldName()}
+                    label={getTimeInputLabel()}
+                    rules={[{ required: true, message: `Vui lòng nhập ${getTimeInputLabel().toLowerCase()}` }]}
+                  >
+                    <DatePicker
+                      showTime
+                      format="DD/MM/YYYY HH:mm:ss"
+                      style={{ width: "100%" }}
+                      placeholder={`Chọn ${getTimeInputLabel().toLowerCase()}`}
+                    />
+                  </Form.Item>
+                )}
+                {needsCancellationReasonInput() && (
+                  <Form.Item
+                    name="cancellationReason"
+                    label="Lý do hủy"
+                    rules={[{ required: true, message: "Vui lòng nhập lý do hủy" }]}
+                  >
+                    <Input.TextArea
+                      rows={4}
+                      placeholder="Nhập lý do hủy"
+                      maxLength={500}
+                      showCount
+                    />
+                  </Form.Item>
+                )}
               </Form>
             )}
           </div>

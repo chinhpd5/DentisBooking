@@ -63,6 +63,11 @@ const bookingSchema = new mongoose.Schema({
     enum: Object.values(IS_DELETED),
     default: IS_DELETED.NO,
   },
+  cancellationReason: {
+    type: String,
+    default: "",
+    trim: true,
+  },
   staffAssignments: {
     type: [{
       type: mongoose.Schema.Types.ObjectId,

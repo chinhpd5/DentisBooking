@@ -66,8 +66,6 @@ export const getListTrick = async (req, res) => {
     };
 
     const result = await Service.paginate(query, options);
-    console.log(result);
-    
 
     res.status(200).json({
       success: true,

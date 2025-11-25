@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 
 const axiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
-  timeout: 10000,
+  timeout: 100000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -47,7 +47,7 @@ axiosInstance.interceptors.response.use(
       case 403:
         console.log(error);
         
-        toast.error(error.response?.data?.message ||"Bạn không có quyền truy cập chức năng này123.");
+        toast.error(error.response?.data?.message ||"Bạn không có quyền truy cập chức năng này.");
         // window.location.href = "/unauthorized";
         break;
 

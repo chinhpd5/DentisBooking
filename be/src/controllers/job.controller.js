@@ -120,7 +120,6 @@ export const getAllJob = async (req, res) => {
 
 export const updateJob = async (req, res) => {
   try {
-    console.log(req.body);
     
     const job = await Service.findByIdAndUpdate(req.params.id, req.body, {
       new: true,

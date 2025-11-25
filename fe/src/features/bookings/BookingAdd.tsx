@@ -12,6 +12,7 @@ import ICustomer from "../../types/customer";
 import { getAllService } from "../../services/service";
 import IService from "../../types/service";
 import { getServiceType, convertNameRole } from "../../utils/helper";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -56,7 +57,7 @@ function BookingAdd() {
         name: customer.name,
         phone: customer.phone,
         address: customer.address,
-        yearOfBirth: customer.yearOfBirth ? dayjs(customer.yearOfBirth) : undefined,
+        yearOfBirth: customer.yearOfBirth || undefined,
         gender: customer.gender || "other",
         customerNote: customer.note || "",
       });
@@ -134,13 +135,11 @@ function BookingAdd() {
     let finalCustomerId = customerId;
     
     // Chuẩn hóa dữ liệu customer từ form values
-    const customerData: Omit<CreateCustomer, 'yearOfBirth'> & { yearOfBirth?: string } = {
+    const customerData: CreateCustomer = {
       name: values.name as string,
       phone: values.phone as string,
       address: values.address as string,
-      yearOfBirth: values.yearOfBirth && dayjs.isDayjs(values.yearOfBirth)
-        ? values.yearOfBirth.toISOString()
-        : values.yearOfBirth as string | undefined,
+      yearOfBirth: values.yearOfBirth ? (values.yearOfBirth as number) : undefined,
       gender: (values.gender as string) || "other",
       note: (values.customerNote as string) || "",
     };
@@ -148,43 +147,30 @@ function BookingAdd() {
     if (!finalCustomerId) {
       // Tạo customer mới
       try {
-        const response = await createCustomerMutation.mutateAsync(customerData as unknown as CreateCustomer);
+        const response = await createCustomerMutation.mutateAsync(customerData);
         finalCustomerId = response.data.data._id;
       } catch {
         return; // Error đã được xử lý trong mutation
       }
     } else {
       // Kiểm tra xem thông tin khách hàng có thay đổi không
-      const existingDateStr = customerFound?.yearOfBirth 
-        ? dayjs(customerFound.yearOfBirth).startOf('day').toISOString() 
-        : '';
-      const newDateStr = customerData.yearOfBirth 
-        ? dayjs(customerData.yearOfBirth).startOf('day').toISOString() 
-        : '';
-      
       const hasChanges = customerFound && (
         customerFound.name !== customerData.name ||
         customerFound.phone !== customerData.phone ||
         customerFound.address !== customerData.address ||
         customerFound.gender !== customerData.gender ||
         customerFound.note !== customerData.note ||
-        existingDateStr !== newDateStr
+        customerFound.yearOfBirth !== customerData.yearOfBirth
       );
 
       // Nếu có thay đổi, cập nhật thông tin khách hàng
       if (hasChanges) {
         try {
-          // Chuẩn hóa dữ liệu để gửi lên server
-          const updateData: Record<string, unknown> = { ...customerData };
-          if (updateData.yearOfBirth) {
-            updateData.yearOfBirth = new Date(customerData.yearOfBirth!);
-          }
-          await updateCustomerMutation.mutateAsync({ id: customerId, data: updateData as Partial<CreateCustomer> });
+          await updateCustomerMutation.mutateAsync({ id: customerId, data: customerData });
           // Cập nhật lại customerFound sau khi update
           const updatedCustomer = {
             ...customerFound,
             ...customerData,
-            yearOfBirth: customerData.yearOfBirth ? new Date(customerData.yearOfBirth) : customerFound.yearOfBirth,
           };
           setCustomerFound(updatedCustomer as ICustomer);
         } catch {
@@ -265,7 +251,12 @@ function BookingAdd() {
 
   return (
     <div>
-      <h2>Thêm mới lịch hẹn</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới lịch hẹn</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/booking")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
@@ -405,7 +396,7 @@ function BookingAdd() {
                           service.type === "trick" || (service.type === "job" && service.isFirst === false)
                         )
                         .map((service: IService) => ({
-                          label: `${service.name} - ${getServiceType(service.type)}`,
+                          label: `${service.name}`,
                           value: service._id,
                         }))}
                       onChange={(value) => {

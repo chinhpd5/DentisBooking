@@ -32,6 +32,20 @@ export const createEmployee = async (req, res) => {
         });
       }
     }
+    
+    if (data.name) {
+      const duplicateName = await Staff.findOne({
+        isDeleted: IS_DELETED.NO,
+        name: data.name,
+      });
+
+      if (duplicateName) {
+        return res.status(400).json({
+          success: false,
+          message: "Tên nhân viên đã tồn tại trong hệ thống",
+        });
+      }
+    }
 
     const newStaff = await Staff.create(data);
     res.status(201).json({
@@ -101,7 +115,7 @@ export const getAllStaff = async (req, res) => {
     const query = { isDeleted: IS_DELETED.NO };
     if (role) query.role = role;
     const staff = await Staff.find(query);
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       data: staff,
     });

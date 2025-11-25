@@ -1,6 +1,7 @@
 import { Button, Col, Flex, Form, Input, Row, Space } from "antd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 import Toast from "react-hot-toast";
 import { CreateLocation } from "../../types/location";
 import { addLocation } from "../../services/location";
@@ -34,7 +35,12 @@ function LocationAdd() {
 
   return (
     <div>
-      <h2>Thêm mới tầng</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới tầng</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/location")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>

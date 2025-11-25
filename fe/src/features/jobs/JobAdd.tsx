@@ -6,7 +6,7 @@ import { CreateJob } from "../../types/job";
 import { JOB_STATUS } from "../../contants";
 import { addJob } from "../../services/job";
 import dayjs from "dayjs";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 const { Option } = Select;
 const { TextArea } = Input;
 
@@ -55,7 +55,12 @@ function JobAdd() {
 
   return (
     <div>
-      <h2>Thêm mới công việc KTV</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới công việc KTV</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/job")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>

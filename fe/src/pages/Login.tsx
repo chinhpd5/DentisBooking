@@ -35,7 +35,7 @@ function Login() {
       <div style={styles.overlay}></div>
       <Card style={styles.card}>
         <Title level={2} style={{ textAlign: 'center' }}>
-          Xiêm - Anh <br />
+          Xiêm Anh Smile <br />
           Hệ thống đặt lịch thông minh
         </Title>
 

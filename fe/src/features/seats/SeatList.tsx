@@ -244,7 +244,7 @@ function SeatList() {
               icon={<AppstoreOutlined />}
               onClick={() => setViewMode('grid')}
             >
-              Trạng thái ghế
+              Lưới
             </Button>
           </Space.Compact>
           <Link to="add">
@@ -364,35 +364,35 @@ function SeatList() {
                         height: '100%',
                       }}
                       hoverable={seat.status === SEAT_STATUS.AVAILABLE || seat.status === SEAT_STATUS.USING}
-                      actions={[
-                        <Link 
-                          key="detail" 
-                          to={`detail/${seat._id}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <InfoCircleOutlined />
-                        </Link>,
-                        <Link 
-                          key="edit" 
-                          to={`edit/${seat._id}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <EditOutlined />
-                        </Link>,
-                        <span onClick={(e) => e.stopPropagation()}>
-                          <Popconfirm
-                            key="delete"
-                            title="Xác nhận xóa"
-                            description="Bạn có chắc chắn muốn xóa ghế này không?"
-                            onConfirm={() => handleDelete(seat._id)}
-                            okText="Xóa"
-                            cancelText="Hủy"
-                            icon={<QuestionCircleOutlined style={{ color: "red" }} />}
-                          >
-                            <DeleteOutlined style={{ color: 'red', cursor: 'pointer' }} />
-                          </Popconfirm>
-                        </span>,
-                      ]}
+                      // actions={[
+                      //   <Link 
+                      //     key="detail" 
+                      //     to={`detail/${seat._id}`}
+                      //     onClick={(e) => e.stopPropagation()}
+                      //   >
+                      //     <InfoCircleOutlined />
+                      //   </Link>,
+                      //   <Link 
+                      //     key="edit" 
+                      //     to={`edit/${seat._id}`}
+                      //     onClick={(e) => e.stopPropagation()}
+                      //   >
+                      //     <EditOutlined />
+                      //   </Link>,
+                      //   <span onClick={(e) => e.stopPropagation()}>
+                      //     <Popconfirm
+                      //       key="delete"
+                      //       title="Xác nhận xóa"
+                      //       description="Bạn có chắc chắn muốn xóa ghế này không?"
+                      //       onConfirm={() => handleDelete(seat._id)}
+                      //       okText="Xóa"
+                      //       cancelText="Hủy"
+                      //       icon={<QuestionCircleOutlined style={{ color: "red" }} />}
+                      //     >
+                      //       <DeleteOutlined style={{ color: 'red', cursor: 'pointer' }} />
+                      //     </Popconfirm>
+                      //   </span>,
+                      // ]}
                     >
                       <div 
                         style={{ 

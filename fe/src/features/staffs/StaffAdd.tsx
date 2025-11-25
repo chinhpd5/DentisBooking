@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { CreateStaff } from "../../types/staff";
 import { STAFF_STATUS } from "../../contants";
 import ScheduleInput from "../../components/ScheduleInput";
-
+import { ArrowLeftOutlined } from "@ant-design/icons";
 const tailLayout = {
   wrapperCol: { offset: 8, span: 16 },
 };
@@ -46,7 +46,12 @@ function StaffAdd() {
  
   return (
     <div>
-      <h2>Thêm mới nhân viên</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Thêm mới nhân viên</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/staff")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
