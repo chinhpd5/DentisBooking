@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DeleteOutlined,
   EditOutlined,
-  InfoCircleOutlined,
+  EyeOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
   PlusOutlined,
@@ -97,7 +97,7 @@ function LocationList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>

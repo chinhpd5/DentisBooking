@@ -2,11 +2,15 @@ import { Button, Col, DatePicker, Flex, Form, Input, Row, Space, Card, Divider, 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate, useParams } from "react-router-dom";
 import Toast from "react-hot-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { CreateBooking, updateBooking, getBookingById } from "../../services/booking";
 import dayjs, { Dayjs } from "dayjs";
 import { BOOKING_STATUS } from "../../contants";
 import IBooking from "../../types/booking";
+import IService from "../../types/service";
+import type IJob from "../../types/job";
+import { getServiceType, convertNameRole } from "../../utils/helper";
+import { ArrowLeftOutlined } from "@ant-design/icons";
 
 function BookingEdit() {
   const { id } = useParams();
@@ -32,6 +36,30 @@ function BookingEdit() {
       });
     }
   }, [booking, form]);
+
+  // Tính toán tổng thời gian của service (service.time + sum of job times)
+  const calculateServiceDuration = useMemo(() => {
+    if (!booking?.serviceId) return 0;
+    const service = booking.serviceId as IService;
+    let total = service.time || 0;
+    if (service.jobIds && service.jobIds.length > 0) {
+      total += service.jobIds.reduce((sum: number, job: IJob) => sum + (job.time || 0), 0);
+    }
+    return total;
+  }, [booking]);
+
+  // Handler khi thay đổi thời gian bắt đầu
+  const handleAppointmentDateChange = (date: Dayjs | null) => {
+    if (!date || !booking?.serviceId) return;
+    
+    // Tính thời gian kết thúc = thời gian bắt đầu + duration
+    const newEndTime = date.add(calculateServiceDuration, 'second');
+    
+    // Cập nhật form
+    form.setFieldsValue({
+      timeEnd: newEndTime,
+    });
+  };
 
   // Cập nhật booking
   const bookingMutation = useMutation({
@@ -95,7 +123,12 @@ function BookingEdit() {
 
   return (
     <div>
-      <h2>Cập nhật lịch hẹn</h2>
+      <Flex justify="space-between" align="center" style={{ marginBottom: 16 }}>
+        <h2 style={{ margin: 0 }}>Cập nhật lịch hẹn</h2>
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate("/booking")}>
+          Quay lại
+        </Button>
+      </Flex>
 
       <Flex justify="center">
         <div style={{ width: "100%", maxWidth: 1200, padding: "0 16px" }}>
@@ -112,9 +145,9 @@ function BookingEdit() {
                     <Input value={booking.customerId?.name || ""} disabled />
                   </Form.Item>
 
-                  <Form.Item label="Ngày sinh">
+                  <Form.Item label="Năm sinh">
                     <Input
-                      value={booking.customerId?.yearOfBirth}
+                      value={booking.customerId?.yearOfBirth || ""}
                       disabled
                     />
                   </Form.Item>
@@ -124,7 +157,20 @@ function BookingEdit() {
                   <Form.Item label="Địa chỉ">
                     <Input.TextArea
                       value={booking.customerId?.address || ""}
-                      rows={4}
+                      rows={5}
+                      disabled
+                    />
+                  </Form.Item>
+
+                  <Form.Item label="Giới tính">
+                    <Input
+                      value={
+                        booking.customerId?.gender === "male"
+                          ? "Nam"
+                          : booking.customerId?.gender === "female"
+                          ? "Nữ"
+                          : "Khác"
+                      }
                       disabled
                     />
                   </Form.Item>
@@ -138,14 +184,17 @@ function BookingEdit() {
             <Card title="Thông tin đặt lịch">
               <Row gutter={24}>
                 <Col span={12}>
-                  <Form.Item label="Thủ thuật">
+                  <Form.Item label="Dịch vụ">
                     <Input
-                      value={
-                        booking.serviceId
-                          ? `${booking.serviceId.name} - ${booking.serviceId.type === "trick" ? "Thủ thuật" : "Công việc"}`
-                          : ""
-                      }
+                      value={booking.serviceId?.name || ""}
                       disabled
+                      suffix={
+                        booking.serviceId && (
+                          <Tag color={booking.serviceId.type === "job" ? "blue" : "purple"}>
+                            {getServiceType(booking.serviceId.type)}
+                          </Tag>
+                        )
+                      }
                     />
                   </Form.Item>
 
@@ -161,9 +210,7 @@ function BookingEdit() {
                       placeholder="Chọn thời gian bắt đầu"
                       format="DD/MM/YYYY HH:mm"
                       showTime={{ format: "HH:mm" }}
-                      disabledDate={(current) => {
-                        return current && current < dayjs().startOf("day");
-                      }}
+                      onChange={handleAppointmentDateChange}
                     />
                   </Form.Item>
 
@@ -179,20 +226,20 @@ function BookingEdit() {
                       placeholder="Chọn thời gian kết thúc"
                       format="DD/MM/YYYY HH:mm"
                       showTime={{ format: "HH:mm" }}
-                      disabledDate={(current) => {
-                        return current && current < dayjs().startOf("day");
-                      }}
                     />
                   </Form.Item>
 
                   <Form.Item label="Người thực hiện">
                     <Input
-                      value={
-                        booking.doctorId
-                          ? `${booking.doctorId.name} (${booking.doctorId.role === "doctor" ? "Bác sĩ" : "Kỹ thuật viên"})`
-                          : ""
-                      }
+                      value={booking.doctorId?.name || ""}
                       disabled
+                      suffix={
+                        booking.doctorId && (
+                          <Tag color={booking.doctorId.role === "doctor" ? "blue" : "cyan"}>
+                            {convertNameRole(booking.doctorId.role)}
+                          </Tag>
+                        )
+                      }
                     />
                   </Form.Item>
 
@@ -200,6 +247,9 @@ function BookingEdit() {
                     <Input
                       value={booking.priority ? "Có" : "Không"}
                       disabled
+                      suffix={
+                        booking.priority ? <Tag color="red">Ưu tiên</Tag> : <Tag>Không ưu tiên</Tag>
+                      }
                     />
                   </Form.Item>
                 </Col>
@@ -207,7 +257,7 @@ function BookingEdit() {
                 <Col span={12}>
                   <Form.Item label="Ghi chú đặt lịch">
                     <Input.TextArea
-                      value={booking.note || ""}
+                      value={booking.note || "Không có ghi chú"}
                       rows={6}
                       disabled
                     />
@@ -231,6 +281,39 @@ function BookingEdit() {
                           : ""
                       }
                       disabled
+                      suffix={
+                        <Tag
+                          color={
+                            booking.status === "booked"
+                              ? "green"
+                              : booking.status === "arrived"
+                              ? "blue"
+                              : booking.status === "inProgress"
+                              ? "orange"
+                              : booking.status === "completed"
+                              ? "purple"
+                              : booking.status === "cancelled"
+                              ? "red"
+                              : booking.status === "changed"
+                              ? "gold"
+                              : "default"
+                          }
+                        >
+                          {booking.status === "booked"
+                            ? "Đã đặt"
+                            : booking.status === "arrived"
+                            ? "Đã đến"
+                            : booking.status === "inProgress"
+                            ? "Đang làm"
+                            : booking.status === "completed"
+                            ? "Hoàn thành"
+                            : booking.status === "cancelled"
+                            ? "Hủy"
+                            : booking.status === "changed"
+                            ? "Thay đổi lịch"
+                            : ""}
+                        </Tag>
+                      }
                     />
                   </Form.Item>
                 </Col>
@@ -279,13 +362,16 @@ function BookingEdit() {
             </Descriptions.Item>
             <Descriptions.Item label="Dịch vụ">
               {booking.serviceId?.name || ""}
+              <Tag color={booking.serviceId?.type === "job" ? "blue" : "purple"} style={{ marginLeft: 8 }}>
+                {booking.serviceId ? getServiceType(booking.serviceId.type) : ""}
+              </Tag>
             </Descriptions.Item>
             <Descriptions.Item label="Người thực hiện">
               <div>
                 <div><strong>{booking.doctorId?.name || ""}</strong></div>
-                <div style={{ fontSize: 12, color: "#666" }}>
-                  {booking.doctorId?.role === "doctor" ? "Bác sĩ" : "Kỹ thuật viên"}
-                </div>
+                <Tag color={booking.doctorId?.role === "doctor" ? "blue" : "cyan"}>
+                  {booking.doctorId ? convertNameRole(booking.doctorId.role) : ""}
+                </Tag>
               </div>
             </Descriptions.Item>
             <Descriptions.Item label="Thời gian cũ">
@@ -296,12 +382,15 @@ function BookingEdit() {
             </Descriptions.Item>
             <Descriptions.Item label="Thời gian mới">
               <div>
-                <div>Bắt đầu: <strong>{pendingBookingData.appointmentDate ? dayjs(pendingBookingData.appointmentDate).format("DD/MM/YYYY HH:mm") : ""}</strong></div>
-                <div>Kết thúc: <strong>{pendingBookingData.timeEnd ? dayjs(pendingBookingData.timeEnd).format("DD/MM/YYYY HH:mm") : ""}</strong></div>
+                <div>Bắt đầu: <strong style={{ color: "#1890ff" }}>{pendingBookingData.appointmentDate ? dayjs(pendingBookingData.appointmentDate).format("DD/MM/YYYY HH:mm") : ""}</strong></div>
+                <div>Kết thúc: <strong style={{ color: "#1890ff" }}>{pendingBookingData.timeEnd ? dayjs(pendingBookingData.timeEnd).format("DD/MM/YYYY HH:mm") : ""}</strong></div>
               </div>
             </Descriptions.Item>
-            <Descriptions.Item label="Trạng thái mới">
-              <Tag color="orange">Thay đổi lịch</Tag>
+            <Descriptions.Item label="Ưu tiên">
+              {booking.priority ? <Tag color="red">Có</Tag> : <Tag>Không</Tag>}
+            </Descriptions.Item>
+            <Descriptions.Item label="Ghi chú">
+              {booking.note && booking.note || "Không có ghi chú"}
             </Descriptions.Item>
           </Descriptions>
         )}

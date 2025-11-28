@@ -1,6 +1,6 @@
 import { Button, Col, Form, Input, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DeleteOutlined, EditOutlined, InfoCircleOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { getListUser, deleteUser } from "../../services/user";
 import { USER_STATUS, USER_ROLE } from "../../contants";
 import toast from "react-hot-toast";
@@ -86,7 +86,7 @@ function UserList() {
       width: 70,
     },
     { title: "Họ tên", dataIndex: "name" },
-    { title: "Username", dataIndex: "username" },
+    { title: "Tên đăng nhập", dataIndex: "username" },
     { title: "Vai trò", dataIndex: "role", render: (role: USER_ROLE) => convertNameRole(role) },
     {
       title: "Trạng thái",
@@ -106,7 +106,7 @@ function UserList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>

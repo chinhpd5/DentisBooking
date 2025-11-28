@@ -75,26 +75,86 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   const [pendingStartTime, setPendingStartTime] = useState<Dayjs | null>(null);
   const minStartTime = useMemo(() => pendingStartTime, [pendingStartTime]);
 
+  // Kiểm tra xem ngày được chọn có phải là hôm nay không
+  const isToday = useMemo(() => {
+    return selectedDate.isSame(dayjs(), "day");
+  }, [selectedDate]);
+
+  // Kiểm tra xem slot có trong quá khứ không (chỉ áp dụng cho ngày hôm nay)
+  const isSlotInPast = useCallback((slot: TimeSlot): boolean => {
+    if (!isToday) return false;
+    const now = dayjs();
+    return slot.start.isBefore(now, "minute");
+  }, [isToday]);
+
   const disabledStartHours = useCallback(() => {
-    if (!minStartTime) return [];
-    const minHour = minStartTime.hour();
-    return Array.from({ length: minHour }, (_, i) => i);
-  }, [minStartTime]);
+    const disabled: number[] = [];
+    
+    // Nếu là hôm nay, disable các giờ đã qua
+    if (isToday) {
+      const currentHour = dayjs().hour();
+      for (let i = 0; i < currentHour; i++) {
+        disabled.push(i);
+      }
+    }
+    
+    // Nếu có minStartTime (từ booking trước đó), disable các giờ trước đó
+    if (minStartTime) {
+      const minHour = minStartTime.hour();
+      for (let i = 0; i < minHour; i++) {
+        if (!disabled.includes(i)) {
+          disabled.push(i);
+        }
+      }
+    }
+    
+    return disabled;
+  }, [minStartTime, isToday]);
 
   const disabledStartMinutes = useCallback(
     (selectedHour: number) => {
-      if (!minStartTime) return [];
-      const minHour = minStartTime.hour();
-      if (selectedHour < minHour) {
-        return Array.from({ length: 60 }, (_, i) => i);
+      const disabled: number[] = [];
+      
+      // Nếu là hôm nay và đang chọn giờ hiện tại, disable các phút đã qua
+      if (isToday) {
+        const now = dayjs();
+        const currentHour = now.hour();
+        const currentMinute = now.minute();
+        
+        if (selectedHour === currentHour) {
+          for (let i = 0; i <= currentMinute; i++) {
+            disabled.push(i);
+          }
+        } else if (selectedHour < currentHour) {
+          // Nếu chọn giờ trong quá khứ, disable tất cả phút
+          for (let i = 0; i < 60; i++) {
+            disabled.push(i);
+          }
+        }
       }
-      if (selectedHour === minHour) {
-        const minMinute = minStartTime.minute();
-        return Array.from({ length: minMinute }, (_, i) => i);
+      
+      // Nếu có minStartTime, disable các phút trước đó
+      if (minStartTime) {
+        const minHour = minStartTime.hour();
+        if (selectedHour < minHour) {
+          for (let i = 0; i < 60; i++) {
+            if (!disabled.includes(i)) {
+              disabled.push(i);
+            }
+          }
+        } else if (selectedHour === minHour) {
+          const minMinute = minStartTime.minute();
+          for (let i = 0; i < minMinute; i++) {
+            if (!disabled.includes(i)) {
+              disabled.push(i);
+            }
+          }
+        }
       }
-      return [];
+      
+      return disabled;
     },
-    [minStartTime]
+    [minStartTime, isToday]
   );
 
   // Khi modal mở, set lại giá trị form nếu có pending values
@@ -509,6 +569,12 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     const staff = staffMap.get(staffId);
     if (!staff) return;
 
+    // Kiểm tra xem slot có trong quá khứ không (nếu là hôm nay)
+    if (isSlotInPast(slot)) {
+      message.warning("Không thể chọn khung giờ trong quá khứ");
+      return;
+    }
+
     // Kiểm tra giờ làm việc
     if (!isSlotInWorkingHours(staff, slot.index)) {
       message.warning("Khung giờ này ngoài giờ làm việc");
@@ -620,6 +686,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     calculateServiceDuration,
     isSlotInWorkingHours,
     isSlotOccupied,
+    isSlotInPast,
     staffMap,
     service,
     setPendingStartTime,
@@ -765,6 +832,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
 
           const slot = record.slot;
           const inWorkingHours = isSlotInWorkingHours(staff, record.slotIndex);
+          const isPast = isSlotInPast(slot);
           
           // Với TRICK type: check số lượng booking trong slot
           let canSelect = false;
@@ -773,8 +841,10 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
           
           if (service?.type === "trick") {
             bookingCount = countTrickBookingsInSlot(staff._id, record.slotIndex);
-            canSelect = inWorkingHours && bookingCount < 3;
-            if (inWorkingHours) {
+            canSelect = inWorkingHours && bookingCount < 3 && !isPast;
+            if (isPast) {
+              displayText = "Đã qua";
+            } else if (inWorkingHours) {
               displayText = bookingCount >= 3 
                 ? `Đã đầy (${bookingCount}/3)` 
                 : bookingCount > 0 
@@ -784,8 +854,12 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
           } else {
             // Với JOB type: giữ nguyên logic cũ
             const occupied = isSlotOccupied(staff._id, record.slotIndex);
-            canSelect = inWorkingHours && !occupied;
-            displayText = canSelect ? "Có thể chọn" : "Nghỉ làm";
+            canSelect = inWorkingHours && !occupied && !isPast;
+            if (isPast) {
+              displayText = "Đã qua";
+            } else {
+              displayText = canSelect ? "Có thể chọn" : "Nghỉ làm";
+            }
           }
 
           return {
@@ -844,6 +918,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         // Check if there's remaining time in the slot after the last booking
         const slot = record.slot;
         const inWorkingHours = isSlotInWorkingHours(staff, record.slotIndex);
+        const isPast = isSlotInPast(slot);
         const lastDisplay = items[items.length - 1];
         const hasRemainingTime = lastDisplay && lastDisplay.actualEndTime.isBefore(slot.end, "minute");
         
@@ -854,16 +929,21 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
         
         if (service?.type === "trick") {
           remainingBookingCount = countTrickBookingsInSlot(staff._id, record.slotIndex);
-          // Luôn cho phép chọn nếu chưa đủ 3 lịch, không cần kiểm tra hasRemainingTime
-          canSelectRemaining = inWorkingHours && remainingBookingCount < 3;
+          // Luôn cho phép chọn nếu chưa đủ 3 lịch và không phải quá khứ
+          canSelectRemaining = inWorkingHours && remainingBookingCount < 3 && !isPast;
           if (canSelectRemaining) {
             remainingDisplayText = remainingBookingCount > 0 
               ? `Chọn thêm (${remainingBookingCount}/3)` 
               : "Có thể chọn";
+          } else if (isPast) {
+            remainingDisplayText = "Đã qua";
           }
         } else {
-          // Với JOB type: giữ nguyên logic cũ
-          canSelectRemaining = hasRemainingTime && inWorkingHours;
+          // Với JOB type: giữ nguyên logic cũ nhưng thêm kiểm tra isPast
+          canSelectRemaining = hasRemainingTime && inWorkingHours && !isPast;
+          if (isPast) {
+            remainingDisplayText = "Đã qua";
+          }
         }
 
         return {
@@ -1008,8 +1088,10 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
     getDisplayRowSpan,
     isSlotInWorkingHours,
     isSlotOccupied,
+    isSlotInPast,
     handleCellClick,
     countTrickBookingsInSlot,
+    service,
   ]);
 
   const tableDataSource = useMemo(

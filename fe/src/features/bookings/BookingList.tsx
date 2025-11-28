@@ -1,10 +1,10 @@
 import { Button, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DeleteOutlined, InfoCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { getListBooking, deleteBooking, updateBookingStatus } from "../../services/booking";
 import { getAllStaff } from "../../services/staff";
 import toast from "react-hot-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import IBooking from "../../types/booking";
 import IData from "../../types";
@@ -43,6 +43,7 @@ function BookingList() {
     newStatus: BOOKING_STATUS;
   } | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   // Set giá trị mặc định cho form khi component mount
   useEffect(() => {
@@ -58,6 +59,16 @@ function BookingList() {
       setCurrentTime(dayjs());
     }, 1000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
 
   const { data, isLoading, error } = useQuery<IData<IBooking>>({
@@ -123,11 +134,11 @@ function BookingList() {
     queryFn: () => getAllStaff(USER_ROLE.STAFF),
   });
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     deleteMutation.mutate(id);
-  };
+  }, [deleteMutation]);
 
-  const handleStatusChange = (id: string, newStatus: BOOKING_STATUS, oldStatus: BOOKING_STATUS) => {
+  const handleStatusChange = useCallback((id: string, newStatus: BOOKING_STATUS, oldStatus: BOOKING_STATUS) => {
     // Nếu trạng thái không thay đổi, không làm gì
     if (newStatus === oldStatus) {
       return;
@@ -153,7 +164,7 @@ function BookingList() {
     } else if (newStatus === BOOKING_STATUS.CANCELLED) {
       timeForm.setFieldValue('cancellationReason', '');
     }
-  };
+  }, [timeForm]);
 
   const handleConfirmStatusChange = () => {
     if (!pendingStatusChange) return;
@@ -279,7 +290,7 @@ function BookingList() {
   };
 
   // Hàm tính thời gian chờ
-  const calculateWaitingTime = (record: IBooking): string | null => {
+  const calculateWaitingTime = useCallback((record: IBooking): string | null => {
     const status = record.status;
     
     // "Đã đặt", "Hủy", "Thay đổi lịch": null (Để trống)
@@ -308,7 +319,7 @@ function BookingList() {
     }
     
     return null;
-  };
+  }, [currentTime]);
 
   // Hàm format thời gian dạng HH:mm:ss
   const formatDuration = (ms: number): string => {
@@ -373,13 +384,13 @@ function BookingList() {
     return statusMap[status] || status;
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     {
       title: "STT",
       render: (_: IBooking, __: IBooking, index: number) =>
         (filter.currentPage - 1) * filter.pageSize + index + 1,
       width: 70,
-      fixed: 'left',
+      ...(isMobile ? {} : { fixed: 'left' as const }),
     },
     {
       title: "Khách hàng",
@@ -389,7 +400,7 @@ function BookingList() {
           <div style={{ fontSize: 12, color: "#666" }}>{record.customerId?.phone || "-"}</div>
         </div>
       ),
-      fixed: 'left',
+      ...(isMobile ? {} : { fixed: 'left' as const }),
     },
     {
       title: "Dịch vụ",
@@ -399,7 +410,7 @@ function BookingList() {
       render: (record: IBooking) => (
         record.serviceId?.name || "-"
       ),
-      fixed: 'left',
+      ...(isMobile ? {} : { fixed: 'left' as const }),
     },
     {
       title: "Ngày hẹn",
@@ -518,16 +529,16 @@ function BookingList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
-          {/* <Link to={`edit/${item._id}`}>
+          <Link to={`edit/${item._id}`}>
             <Button
               color="orange"
               variant="solid"
               icon={<EditOutlined />}
             ></Button>
-          </Link> */}
+          </Link>
          
           <Popconfirm
             title="Xác nhận xóa"
@@ -546,7 +557,7 @@ function BookingList() {
         </Space>
       ),
     },
-  ];
+  ], [filter.currentPage, filter.pageSize, isMobile, pendingStatusChange, updateStatusMutation.isPending, calculateWaitingTime, handleDelete, handleStatusChange]);
 
   return (
     <div>
@@ -641,7 +652,7 @@ function BookingList() {
 
       <Table
         columns={columns as ColumnType<IBooking>[]}
-        scroll={{ x: 'max-content' }}
+        scroll={{ x: isMobile ? 'max-content' : 1500 }}
         loading={isLoading}
         dataSource={data?.data.map((item) => ({ ...item, key: item._id }))}
         pagination={{
@@ -650,6 +661,7 @@ function BookingList() {
           total: data?.totalDocs,
           onChange: (page, pageSize) =>
             setFilter((prev) => ({ ...prev, currentPage: page, pageSize })),
+          ...(isMobile ? { simple: true, pageSize: 20 } : {}),
         }}
       />
 

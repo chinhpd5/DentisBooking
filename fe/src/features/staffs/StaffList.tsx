@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import {
   DeleteOutlined,
   EditOutlined,
-  InfoCircleOutlined,
+  EyeOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
@@ -86,7 +86,7 @@ function StaffList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>

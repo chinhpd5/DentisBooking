@@ -1,6 +1,6 @@
 import { Button, Col, Form, Input, Popconfirm, Row, Space, Table } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DeleteOutlined, EditOutlined, InfoCircleOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
 import { getListCustomer, deleteCustomer } from "../../services/customer";
 import toast from "react-hot-toast";
 import { useState } from "react";
@@ -87,7 +87,7 @@ function CustomerList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
