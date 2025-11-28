@@ -1,5 +1,6 @@
 import {
   AreaChartOutlined,
+  BellOutlined,
   HomeOutlined,
   InsertRowBelowOutlined,
   MenuFoldOutlined,
@@ -14,19 +15,24 @@ import {
   UsergroupAddOutlined,
   UserOutlined,
   UserSwitchOutlined,
+  ArrowRightOutlined,
 } from "@ant-design/icons";
 import type { MenuProps } from "antd";
-import { Button, Menu, Popconfirm } from "antd";
+import { Button, Empty, List, Menu, Modal, Popconfirm, Select, Spin, Tag } from "antd";
 import logoImage from "../assets/logo.jpg";
 import "../assets/layout.css";
 import { Outlet } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import { useMemo, useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import socketService from "../services/socket";
 import notificationSound from "../assets/notification.mp3";
 import { SEAT_STATUS } from "../contants";
+import { getStatusColor, getStatusText } from "../utils/helper";
+import IData from "../types";
+import INotification from "../types/notification";
+import { getNotifications } from "../services/notification";
 
 type MenuItem = Required<MenuProps>["items"][number];
 
@@ -119,8 +125,18 @@ function MainLayout() {
   const [userRole, setUserRole] = useState<string>("");
   const [userName, setUserName] = useState<string>("Admin");
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState<boolean>(false);
+  const [seatFilter, setSeatFilter] = useState<string>("");
+  const [userFilter, setUserFilter] = useState<string>("");
   const queryClient = useQueryClient();
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const { data: notificationData, isLoading: isNotificationLoading } = useQuery<IData<INotification>>({
+    queryKey: ["notifications"],
+    queryFn: () => getNotifications(1, 20),
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
     const role = localStorage.getItem("roleDentis") || "";
@@ -181,6 +197,7 @@ function MainLayout() {
 
         // Cập nhật cache để refresh danh sách
         queryClient.invalidateQueries({ queryKey: ["seats"] });
+        queryClient.invalidateQueries({ queryKey: ["notifications"] });
       }
     };
 
@@ -343,6 +360,104 @@ function MainLayout() {
     toast.success('Đăng xuất thành công');
   }
 
+  const notifications = useMemo(() => notificationData?.data ?? [], [notificationData]);
+
+  const getChangedByName = (changedBy: INotification["changedBy"]) => {
+    if (!changedBy) return "Không xác định";
+    if (typeof changedBy === "string") return changedBy;
+    return changedBy.name || "Không xác định";
+  };
+
+  const getSeatLocation = (notification: INotification) => {
+    const seat = notification.seatId;
+    if (seat && typeof seat === "object") {
+      const location = seat.locationId;
+      if (location && typeof location === "object") {
+        return location.name || "-";
+      }
+    }
+    return "-";
+  };
+
+  const seatOptions = useMemo(() => {
+    const map = new Map<string, { seatName: string; locationName: string }>();
+    notifications.forEach((notification) => {
+      const seat = notification.seatId;
+      if (seat && typeof seat === "object") {
+        const location = seat.locationId;
+        const locationName = location && typeof location === "object" ? location.name : "-";
+        map.set(seat._id, { seatName: seat.name, locationName });
+      } else if (typeof seat === "string") {
+        map.set(seat, { seatName: notification.seatName, locationName: "-" });
+      }
+    });
+
+    return Array.from(map.entries()).map(([value, { seatName, locationName }]) => ({
+      label: `${seatName} - ${locationName}`,
+      value,
+    }));
+  }, [notifications]);
+
+  const userOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    notifications.forEach((notification) => {
+      const changedBy = notification.changedBy;
+      if (changedBy && typeof changedBy === "object") {
+        map.set(changedBy._id, changedBy.name);
+      } else if (typeof changedBy === "string") {
+        map.set(changedBy, changedBy);
+      }
+    });
+
+    return Array.from(map.entries()).map(([value, label]) => ({
+      label,
+      value,
+    }));
+  }, [notifications]);
+
+  const filteredNotifications = useMemo(() => {
+    if (!seatFilter && !userFilter) {
+      return notifications;
+    }
+
+    return notifications.filter((notification) => {
+      const seat = notification.seatId;
+      const seatId =
+        seat && typeof seat === "object"
+          ? seat._id
+          : typeof seat === "string"
+          ? seat
+          : undefined;
+
+      const changedBy = notification.changedBy;
+      const changedById =
+        changedBy && typeof changedBy === "object"
+          ? changedBy._id
+          : typeof changedBy === "string"
+          ? changedBy
+          : undefined;
+
+      const matchSeat = seatFilter
+        ? seatId === seatFilter
+        : true;
+      const matchUser = userFilter
+        ? changedById === userFilter
+        : true;
+
+      return matchSeat && matchUser;
+    });
+  }, [notifications, seatFilter, userFilter]);
+
+  const handleOpenNotificationModal = () => {
+    setIsNotificationModalOpen(true);
+  };
+
+  const handleCloseNotificationModal = () => {
+    setIsNotificationModalOpen(false);
+    setSeatFilter("");
+    setUserFilter("");
+  };
+
   return (
     <div className="wrapper">
       {/* Overlay để đóng menu khi click bên ngoài trên tablet */}
@@ -392,16 +507,25 @@ function MainLayout() {
             <h3 style={{ margin: 0 }}>Xin chào, {userName}</h3>
           </div>
 
-          <Popconfirm
-            placement="bottom"
-            title="Đăng xuất"
-            description="Bạn có chắc chắn muốn đăng xuất"
-            onConfirm={handleLogout}
-            okText="Có"
-            cancelText="Không"
-          >
-            <Button size="small">Đăng xuất</Button>
-          </Popconfirm>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <Button
+              type="text"
+              shape="circle"
+              aria-label="Thông báo"
+              icon={<BellOutlined />}
+              onClick={handleOpenNotificationModal}
+            />
+            <Popconfirm
+              placement="bottom"
+              title="Đăng xuất"
+              description="Bạn có chắc chắn muốn đăng xuất"
+              onConfirm={handleLogout}
+              okText="Có"
+              cancelText="Không"
+            >
+              <Button size="small">Đăng xuất</Button>
+            </Popconfirm>
+          </div>
          
         </header>
 
@@ -409,6 +533,86 @@ function MainLayout() {
           <Outlet />
         </main>
       </div>
+      <Modal
+        title="Thông báo thay đổi ghế"
+        open={isNotificationModalOpen}
+        onCancel={handleCloseNotificationModal}
+        footer={null}
+        width={600}
+        bodyStyle={{ height: 500, overflowY: "auto", padding: 0 }}
+      >
+        <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+          <div
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 2,
+              background: "#fff",
+              padding: "16px 24px",
+              borderBottom: "1px solid #f0f0f0",
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
+            <Select
+              placeholder="Lọc theo ghế"
+              value={seatFilter || undefined}
+              onChange={(value) => setSeatFilter(value || "")}
+              allowClear
+              style={{ minWidth: 200 }}
+              options={seatOptions}
+            />
+            <Select
+              placeholder="Lọc theo người thao tác"
+              value={userFilter || undefined}
+              onChange={(value) => setUserFilter(value || "")}
+              allowClear
+              style={{ minWidth: 200 }}
+              options={userOptions}
+            />
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "16px 24px" }}>
+            {isNotificationLoading ? (
+              <div style={{ textAlign: "center", padding: "24px 0" }}>
+                <Spin />
+              </div>
+            ) : notifications.length === 0 ? (
+              <Empty description="Chưa có thông báo" />
+            ) : filteredNotifications.length === 0 ? (
+              <Empty description="Không tìm thấy thông báo phù hợp" />
+            ) : (
+              <List
+                itemLayout="horizontal"
+                dataSource={filteredNotifications}
+                renderItem={(item) => (
+                  <List.Item key={item._id}>
+                    <List.Item.Meta
+                      title={`Ghế ${item.seatName}`}
+                      description={
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <span>Người thao tác: <strong>{getChangedByName(item.changedBy)}</strong></span>
+                          <span>Tầng: <strong>{getSeatLocation(item)}</strong></span>
+                          <span>Thời gian: {new Date(item.createdAt).toLocaleString()}</span>
+                        </div>
+                      }
+                    />
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <Tag color={getStatusColor(item.fromStatus)}>
+                        {getStatusText(item.fromStatus)}
+                      </Tag>
+                      <ArrowRightOutlined />
+                      <Tag color={getStatusColor(item.toStatus)}>
+                        {getStatusText(item.toStatus)}
+                      </Tag>
+                    </div>
+                  </List.Item>
+                )}
+              />
+            )}
+          </div>
+        </div>
+      </Modal>
      
     </div>
   );

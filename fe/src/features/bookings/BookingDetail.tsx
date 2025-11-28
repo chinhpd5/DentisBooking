@@ -64,17 +64,17 @@ function BookingDetail() {
               : "Chưa cập nhật"}
           </Descriptions.Item>
 
-          <Descriptions.Item label="Thời gian kết thúc">
+          {booking.doctorDate && (
+            <Descriptions.Item label="Thời gian Bác sỹ thực hiện dự kiến">
+              {dayjs(booking.doctorDate).format("DD/MM/YYYY HH:mm")}
+            </Descriptions.Item>
+          )}
+
+          <Descriptions.Item label="Thời gian kết thúc dự kiến">
             {booking.timeEnd
               ? dayjs(booking.timeEnd).format("DD/MM/YYYY HH:mm")
               : "Chưa cập nhật"}
           </Descriptions.Item>
-
-          {booking.doctorDate && (
-            <Descriptions.Item label="Ngày bác sỹ">
-              {dayjs(booking.doctorDate).format("DD/MM/YYYY HH:mm")}
-            </Descriptions.Item>
-          )}
 
           <Descriptions.Item label="Bác sỹ">
             {booking.doctorId?.name || "Chưa chỉ định"}

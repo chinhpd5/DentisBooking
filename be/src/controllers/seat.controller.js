@@ -1,4 +1,5 @@
 import Seat from '../models/seat.model'; 
+import Notification from '../models/notification.model';
 import { IS_DELETED, SEAT_STATUS  } from  "../utils/constants" 
 
 export const createSeat= async (req, res) => {
@@ -213,6 +214,21 @@ export const updateSeatStatus = async (req, res) => {
     const oldStatus = seat.status;
     seat.status = status;
     await seat.save();
+
+    const userId = req.user?.id;
+    if (userId) {
+      try {
+        await Notification.create({
+          seatId: seat._id,
+          seatName: seat.name,
+          changedBy: userId,
+          fromStatus: oldStatus,
+          toStatus: status,
+        });
+      } catch (notificationError) {
+        console.error("Failed to create notification:", notificationError);
+      }
+    }
 
     // Emit socket event để thông báo real-time cho các client khác
     const io = req.app.get('io');

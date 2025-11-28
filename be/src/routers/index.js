@@ -8,6 +8,7 @@ import jobRouter from "./job.router";
 import trickRouter from "./trick.router";
 import bookingRouter from "./booking.router";
 import serviceRouter from "./service.router";
+import notificationRouter from "./notification.router";
 
 const routers = express.Router();
 
@@ -21,5 +22,6 @@ routers.use("/job", jobRouter);
 routers.use("/trick", trickRouter);
 routers.use("/booking", bookingRouter);
 routers.use("/service", serviceRouter);
+routers.use("/notification", notificationRouter);
 
 export default routers;

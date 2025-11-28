@@ -218,7 +218,7 @@ function Home() {
       // [BOOKING_STATUS.CHANGED]: { color: "purple", text: "Thay đổi lịch" },
     };
     const statusInfo = statusMap[status] || { color: "default", text: status };
-    return <Tag color={statusInfo.color}>{statusInfo.text}</Tag>;
+    return <Tag style={{ marginRight: 0 }} color={statusInfo.color}>{statusInfo.text}</Tag>;
   };
 
   const handleFilterChange = (role: string | undefined) => {
@@ -336,10 +336,12 @@ function Home() {
                       <div style={{ fontSize: 11, color: "#666" }}>
                         {customerName || ""}
                       </div>
-                      <div style={{ fontSize: 10, color: "#999", marginTop: 4 }}>
-                        {dayjs(item.startTime).format("HH:mm")} - {dayjs(item.endTime).format("HH:mm")}
+                      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 8, marginTop: 4 }}>
+                        <div style={{ fontSize: 10, color: "#999" }}>
+                          {dayjs(item.startTime).format("HH:mm")} - {dayjs(item.endTime).format("HH:mm")}
+                        </div>
+                        {statusTag && <div>{statusTag}</div>}
                       </div>
-                      {statusTag && <div style={{ marginTop: 4 }}>{statusTag}</div>}
                     </div>
                   );
                 })}
@@ -514,7 +516,7 @@ function Home() {
                     {dayjs((selectedItem.data as IBooking).doctorDate).format("DD/MM/YYYY HH:mm")}
                   </Descriptions.Item>
                 )}
-                <Descriptions.Item label="Thời gian kết thúc">
+                <Descriptions.Item label="Thời gian kết thúc dự kiến">
                   {dayjs((selectedItem.data as IBooking).timeEnd).format("DD/MM/YYYY HH:mm")}
                 </Descriptions.Item>
                 <Descriptions.Item label="Trạng thái">

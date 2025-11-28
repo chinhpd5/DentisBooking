@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   DeleteOutlined,
   EditOutlined,
-  InfoCircleOutlined,
+  EyeOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
 } from "@ant-design/icons";
@@ -143,7 +143,7 @@ function TrickList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>

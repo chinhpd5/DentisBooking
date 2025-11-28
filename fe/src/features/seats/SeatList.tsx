@@ -4,7 +4,7 @@ import {
   AppstoreOutlined,
   DeleteOutlined,
   EditOutlined,
-  InfoCircleOutlined,
+  EyeOutlined,
   PlusOutlined,
   QuestionCircleOutlined,
   SearchOutlined,
@@ -38,7 +38,7 @@ function SeatList() {
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [filter, setFilter] = useState<FilterType>({
     currentPage: 1,
-    pageSize: 10,
+    pageSize: 20,
   });
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<ISeat | null>(null);
@@ -196,7 +196,7 @@ function SeatList() {
             <Button
               color="blue"
               variant="solid"
-              icon={<InfoCircleOutlined />}
+              icon={<EyeOutlined />}
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
@@ -244,7 +244,7 @@ function SeatList() {
               icon={<AppstoreOutlined />}
               onClick={() => setViewMode('grid')}
             >
-              Lưới
+              Trạng thái ghế
             </Button>
           </Space.Compact>
           <Link to="add">
@@ -370,7 +370,7 @@ function SeatList() {
                       //     to={`detail/${seat._id}`}
                       //     onClick={(e) => e.stopPropagation()}
                       //   >
-                      //     <InfoCircleOutlined />
+                      //     <EyeOutlined />
                       //   </Link>,
                       //   <Link 
                       //     key="edit" 
@@ -453,9 +453,6 @@ function SeatList() {
                   setFilter((prev) => ({ ...prev, currentPage: page, pageSize }))
                 }
                 showSizeChanger
-                showTotal={(total, range) =>
-                  `${range[0]}-${range[1]} của ${total} ghế`
-                }
               />
             </div>
           )}
