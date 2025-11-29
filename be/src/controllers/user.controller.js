@@ -283,20 +283,32 @@ export const updateUserStatus = async (req, res) => {
 
 export const changePassword = async (req, res) => {
   try {
-    const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id;
+    const { oldPassword, newPassword, username } = req.body;
+    // const userId = req.user.id;
+    console.log(req.body);
     
-    const user = await User.findById(userId).select("+password");
+    const user = await User.findOne({
+      username,
+      isDeleted: IS_DELETED.NO,
+    }).select("+password");
+
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "Không tìm thấy người dùng",
+        message: "Không tìm thấy tài khoản",
+      });
+    }
+
+    if (user.status != USER_STATUS.ACTIVE) {
+      return res.status(403).json({
+        success: false,
+        message: "Tài khoản đã bị khóa hoặc chưa kích hoạt",
       });
     }
 
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) {
-      return res.status(401).json({
+      return res.status(400).json({
         success: false,
         message: "Mật khẩu cũ không chính xác",
       });

@@ -36,6 +36,7 @@ import BookingList from "../features/bookings/BookingList";
 import BookingEdit from "../features/bookings/BookingEdit";
 import BookingDetail from "../features/bookings/BookingDetail";
 import Dashboard from "../pages/Dashboard";
+import ChangePassword from "../pages/ChangePassword";
 
 const router = createBrowserRouter([
   {
@@ -111,6 +112,7 @@ const router = createBrowserRouter([
     ],
   },
   { path: "/login", element: <Login />},
+  { path: "/change-password", element: <ChangePassword />},
   { path: "/unauthorized", element: <Uauthorized/>},
 
 ]);

@@ -13,9 +13,9 @@ import notificationRouter from "./notification.router";
 const routers = express.Router();
 
 routers.use("/auth", userRouter);
+routers.use("/user", userRouter);
 routers.use("/staff", staffRouter);
 routers.use("/location", locationRouter);
-routers.use("/user", userRouter);
 routers.use("/customer", customerRouter);
 routers.use("/seat", seatRouter);
 routers.use("/job", jobRouter);
