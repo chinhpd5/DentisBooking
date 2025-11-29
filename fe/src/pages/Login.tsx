@@ -69,8 +69,18 @@ function Login() {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block>
+            <Button type="primary" htmlType="submit" block loading={mutation.isPending}>
               Đăng nhập
+            </Button>
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'center' }}>
+            <Button 
+              type="link" 
+              onClick={() => navigate('/change-password')}
+              style={{ padding: 0 }}
+            >
+              Đổi mật khẩu
             </Button>
           </Form.Item>
         </Form>

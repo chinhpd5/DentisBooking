@@ -19,5 +19,10 @@ export const getListUser = async (page: number, limit: number, search: string|un
 export const getUserById = (id: string) => axiosInstance.get(`/user/${id}`).then(res => res.data.data);
 export const updateUser = (id: string, data: Partial<CreateUser>) => axiosInstance.put(`/user/${id}`, data);
 export const deleteUser = (id: string) => axiosInstance.delete(`/user/${id}`);
+export const resetPassword = (id: string) => axiosInstance.post(`/user/reset-password`, { id });
+export const changePassword = (data: { oldPassword: string; newPassword: string; username: string }) => {
+  console.log(data);
+  return axiosInstance.post(`/user/change-password`, data);
+}
 
 

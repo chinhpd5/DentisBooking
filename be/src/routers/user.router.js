@@ -19,9 +19,9 @@ const router = express.Router();
 
 // Đăng ký đăng nhập
 router.post("/login",validateRequest(loginSchema),login);
+router.post("/change-password", validateRequest(changePasswordSchema),changePassword);
 
 router.use(checkAuth);
-router.post("/change-password", validateRequest(changePasswordSchema),changePassword);
 router.get("/:id",getUserById);
 
 router.use(checkAdmin);

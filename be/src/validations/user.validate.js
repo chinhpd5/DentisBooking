@@ -41,6 +41,9 @@ export const loginSchema = Joi.object({
 });
 
 export const changePasswordSchema = Joi.object({
+  username: Joi.string().required().messages({
+    "any.required": "Tên đăng nhập là bắt buộc",
+  }),
   oldPassword: Joi.string().required().messages({
     "any.required": "Mật khẩu cũ là bắt buộc",
   }),

@@ -478,7 +478,7 @@ function BookingList() {
           <Select
             value={status}
             onChange={(value) => handleStatusChange(record._id, value, status)}
-            style={{ minWidth: 150 }}
+            style={{ width: 'auto', minWidth: 'fit-content' }}
             loading={updateStatusMutation.isPending && isPendingForThisRecord}
             disabled={
               updateStatusMutation.isPending || 
@@ -655,6 +655,7 @@ function BookingList() {
         scroll={{ x: isMobile ? 'max-content' : 1500 }}
         loading={isLoading}
         dataSource={data?.data.map((item) => ({ ...item, key: item._id }))}
+        locale={{ emptyText: 'Không có lịch đặt trong thời gian này' }}
         pagination={{
           current: filter.currentPage,
           pageSize: filter.pageSize,

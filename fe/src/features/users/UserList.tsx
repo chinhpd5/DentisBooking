@@ -1,10 +1,10 @@
 import { Button, Col, Form, Input, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DeleteOutlined, EditOutlined, EyeOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
-import { getListUser, deleteUser } from "../../services/user";
+import { DeleteOutlined, EditOutlined, EyeOutlined, QuestionCircleOutlined, SearchOutlined, KeyOutlined } from "@ant-design/icons";
+import { getListUser, deleteUser, resetPassword } from "../../services/user";
 import { USER_STATUS, USER_ROLE } from "../../contants";
 import toast from "react-hot-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import IUser from "../../types/user";
 import IData from "../../types";
@@ -27,6 +27,12 @@ function UserList() {
     currentPage: 1,
     pageSize: 10,
   });
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const role = localStorage.getItem("roleDentis") || "";
+    setUserRole(role);
+  }, []);
 
   const { data, isLoading, error } = useQuery<IData<IUser>>({
     queryKey: ["users", filter],
@@ -49,8 +55,23 @@ function UserList() {
    
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: resetPassword,
+    onSuccess: () => {
+      toast.success("Đặt lại mật khẩu thành công. Mật khẩu mới là: 123456");
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+    },
+    onError: (error: any) => {
+      toast.error("Đặt lại mật khẩu thất bại: " + (error.response?.data?.message || "Lỗi không xác định"));
+    },
+  });
+
   const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
+  };
+
+  const handleResetPassword = (id: string) => {
+    resetPasswordMutation.mutate(id);
   };
 
   const handleFinish = (values: any) => {
@@ -116,7 +137,23 @@ function UserList() {
               icon={<EditOutlined />}
             ></Button>
           </Link>
-         
+          {userRole === "admin" && (
+            <Popconfirm
+              title="Xác nhận đặt lại mật khẩu"
+              description="Mật khẩu sẽ được đặt lại thành '123456'. Bạn có chắc chắn muốn tiếp tục không?"
+              onConfirm={() => handleResetPassword(item._id)}
+              okText="Xác nhận"
+              cancelText="Hủy"
+              icon={<QuestionCircleOutlined style={{ color: 'orange' }} />}
+            >
+              <Button
+                color="default"
+                variant="solid"
+                icon={<KeyOutlined />}
+                title="Đặt lại mật khẩu"
+              ></Button>
+            </Popconfirm>
+          )}
           <Popconfirm
             title="Xác nhận xóa"
             description="Bạn có chắc chắn muốn xóa không?"

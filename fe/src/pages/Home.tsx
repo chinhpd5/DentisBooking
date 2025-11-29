@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Table, Tag, Modal, Descriptions, Spin, Card, DatePicker, Select, Space } from "antd";
+import { Table, Tag, Modal, Descriptions, Spin, Card, DatePicker, Select, Space, Button } from "antd";
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { getTodaySchedule, getBookingById } from "../services/booking";
 import { getAllStaff } from "../services/staff";
@@ -9,6 +9,8 @@ import { getServiceType, convertNameRole } from "../utils/helper";
 import IBooking from "../types/booking";
 import IStaffAssignment from "../types/staff-assignment";
 import { IStaff } from "../types/staff";
+import { PrinterTwoTone } from "@ant-design/icons";
+
 
 const { Option } = Select;
 
@@ -384,6 +386,7 @@ function Home() {
         title={`Lịch làm việc - ${selectedDate.format("DD/MM/YYYY")}`}
       extra={
         <Space>
+          <Button icon={<PrinterTwoTone />}></Button>
           <DatePicker
             value={selectedDate}
             onChange={(date) => setSelectedDate(date || dayjs())}
