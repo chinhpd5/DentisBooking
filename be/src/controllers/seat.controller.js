@@ -15,13 +15,14 @@ export const createSeat= async (req, res) => {
 
     const duplicateSeat = await Seat.findOne({
       name: data.name,
+      locationId: data.locationId,
       ...(Seat.schema.path("isDeleted") ? { isDeleted: IS_DELETED.NO } : {}),
     });
 
     if (duplicateSeat) {
       return res.status(400).json({
         success: false,
-        message: "Tên ghế đã tồn tại trong hệ thống",
+        message: "Tên ghế đã trùng với ghế cùng tầng trong hệ thống",
       });
     }
 

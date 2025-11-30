@@ -285,7 +285,6 @@ export const changePassword = async (req, res) => {
   try {
     const { oldPassword, newPassword, username } = req.body;
     // const userId = req.user.id;
-    console.log(req.body);
     
     const user = await User.findOne({
       username,
