@@ -91,23 +91,29 @@ function TrickList() {
       title: "STT",
       render: (_: unknown, __: unknown, index: number) =>
         (filter.currentPage - 1) * filter.pageSize + index + 1,
-      width: 70,
+      width: 60,
     },
     {
       title: "Tên thủ thuật",
       dataIndex: "name",
       key: "name",
+      width: 180,
+      ellipsis: true,
     },
     {
       title: "Thời gian",
       dataIndex: "time",
       key: "time",
+      width: 120,
       render: (time: number) => formatTime(time),
     },
     {
       title: "Bác sĩ",
       dataIndex: ["staffIds", "name"],
-      key: "staffIds", 
+      key: "staffIds",
+      width: 150,
+      ellipsis: true,
+      responsive: ["md"] as ("xs" | "sm" | "md" | "lg" | "xl" | "xxl")[],
       render: (_: unknown, record: ITrick) => {
         const staff = typeof record.staffIds === 'object' ? record.staffIds : null;
         return staff ? staff.map((staff: IStaff) => staff.name).join(", ") : "-";
@@ -117,17 +123,24 @@ function TrickList() {
       title: "Số lượng KTV đi kèm",
       dataIndex: "countStaff",
       key: "countStaff",
+      width: 120,
+      align: "center" as const,
+      responsive: ["lg"] as ("xs" | "sm" | "md" | "lg" | "xl" | "xxl")[],
     },
     {
       title: "Số lượng Công việc chuẩn bị",
       dataIndex: "jobIds",
       key: "jobIds",
+      width: 150,
+      align: "center" as const,
+      responsive: ["lg"] as ("xs" | "sm" | "md" | "lg" | "xl" | "xxl")[],
       render: (jobIds: unknown[]) => jobIds?.length || 0,
     },
     {
       title: "Trạng thái",
       dataIndex: "status",
       key: "status",
+      width: 100,
       render: (status: TRICK_STATUS) => (
         <Tag color={status === TRICK_STATUS.ACTIVE ? "green" : "red"}>
           {status === TRICK_STATUS.ACTIVE ? "Hoạt động" : "Không hoạt động"}
@@ -137,13 +150,16 @@ function TrickList() {
     {
       title: "",
       key: "actions",
+      width: 120,
+      // fixed: "right" as const,
       render: (_: unknown, item: ITrick) => (
-        <Space size="middle">
+        <Space size="small">
           <Link to={`detail/${item._id}`}>
             <Button
               color="blue"
               variant="solid"
               icon={<EyeOutlined />}
+              size="small"
             ></Button>
           </Link>
           <Link to={`edit/${item._id}`}>
@@ -151,6 +167,7 @@ function TrickList() {
               color="orange"
               variant="solid"
               icon={<EditOutlined />}
+              size="small"
             ></Button>
           </Link>
          
@@ -166,6 +183,7 @@ function TrickList() {
                 color="danger"
                 variant="solid"
                 icon={<DeleteOutlined />}
+                size="small"
               ></Button>
           </Popconfirm>
         </Space>
@@ -177,13 +195,13 @@ function TrickList() {
     <div>
       <h3>Danh sách thủ thuật</h3>
       <Form layout="vertical" form={form} onFinish={handleFinish}>
-        <Row gutter={16}>
-          <Col span={6}>
+        <Row gutter={[8, 8]}>
+          <Col xs={12} sm={12} md={6} lg={6}>
             <Form.Item name="search" label="Tìm kiếm">
               <Input placeholder="Tên thủ thuật" allowClear />
             </Form.Item>
           </Col>
-          <Col span={6}>
+          <Col xs={12} sm={12} md={6} lg={6}>
             <Form.Item name="status" label="Trạng thái">
               <Select allowClear placeholder="Chọn trạng thái">
                 <Option value={TRICK_STATUS.ACTIVE}>Hoạt động</Option>
@@ -191,31 +209,47 @@ function TrickList() {
               </Select>
             </Form.Item>
           </Col>
-          <Col span={6} style={{ display: "flex", alignItems: "flex-end" }}>
+          <Col xs={24} sm={24} md={12} lg={12} style={{ display: "flex", alignItems: "flex-end", paddingBottom: 4 }}>
             <Form.Item>
-              <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
-                Lọc
-              </Button>
-              <Button onClick={handleReset} style={{ marginLeft: 8 }}>
-                Đặt lại
-              </Button>
+              <Space>
+                <Button htmlType="submit" type="primary" icon={<SearchOutlined />}>
+                  Lọc
+                </Button>
+                <Button onClick={handleReset}>
+                  Đặt lại
+                </Button>
+              </Space>
             </Form.Item>
           </Col>
         </Row>
       </Form>
 
-      <Table
-        columns={columns}
-        loading={isLoading}
-        dataSource={data?.data.map((item) => ({ ...item, key: item._id }))}
-        pagination={{
-          current: filter.currentPage,
-          pageSize: filter.pageSize,
-          total: data?.totalDocs,
-          onChange: (page, pageSize) =>
-            setFilter((prev) => ({ ...prev, currentPage: page, pageSize })),
-        }}
-      />
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          columns={columns}
+          loading={isLoading}
+          dataSource={data?.data.map((item) => ({ ...item, key: item._id }))}
+          scroll={{ x: "max-content" }}
+          size="small"
+          pagination={{
+            current: filter.currentPage,
+            pageSize: filter.pageSize,
+            total: data?.totalDocs,
+            onChange: (page, pageSize) =>
+              setFilter((prev) => ({ ...prev, currentPage: page, pageSize })),
+            responsive: true,
+            showSizeChanger: true,
+            showTotal: (total, range) => `${range[0]}-${range[1]} của ${total}`,
+          }}
+          components={{
+            body: {
+              row: (props: React.HTMLAttributes<HTMLTableRowElement>) => (
+                <tr {...props} style={{ height: '60px' }} />
+              ),
+            },
+          }}
+        />
+      </div>
     </div>
   );
 }

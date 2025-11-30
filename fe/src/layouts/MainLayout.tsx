@@ -1,5 +1,5 @@
 import {
-  AreaChartOutlined,
+  // AreaChartOutlined,
   BellOutlined,
   HomeOutlined,
   InsertRowBelowOutlined,
@@ -95,11 +95,11 @@ const allMenuItems: MenuItem[] = [
       {key: "location-list", label: "Quản lý tầng", icon: <UnorderedListOutlined />},
     ]
   },
-  {
-    key: "dashboard",
-    label: "Báo cáo",
-    icon: <AreaChartOutlined />,
-  },
+  // {
+  //   key: "dashboard",
+  //   label: "Báo cáo",
+  //   icon: <AreaChartOutlined />,
+  // },
   {
     key: "user",
     label: "Quản lý Tài khoản",
