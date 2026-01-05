@@ -33,10 +33,12 @@ import CustomerEdit from "../features/customers/CustomerEdit";
 import CustomerDetail from "../features/customers/CustomerDetail";
 import BookingAdd from "../features/bookings/BookingAdd";
 import BookingList from "../features/bookings/BookingList";
+import BookingListDoctor from "../features/bookings/BookingListDoctor";
 import BookingEdit from "../features/bookings/BookingEdit";
 import BookingDetail from "../features/bookings/BookingDetail";
 import Dashboard from "../pages/Dashboard";
 import ChangePassword from "../pages/ChangePassword";
+import BookingStatistics from "../pages/BookingStatistics";
 
 const router = createBrowserRouter([
   {
@@ -45,6 +47,7 @@ const router = createBrowserRouter([
     children: [
       {path:"", element: <Home />},
       { path: "dashboard", element: <Dashboard/>},
+      { path: "booking-statistics", element: <BookingStatistics/>},
       { 
         path: "user", children: [
           { path: "", element: <UserList/> },
@@ -104,6 +107,7 @@ const router = createBrowserRouter([
       {
         path: "booking", children: [
           { path: "", element: <BookingList/>},
+          { path: "doctor", element: <BookingListDoctor/>},
           { path: "add", element: <BookingAdd/>},
           { path: "edit/:id", element: <BookingEdit/>},
           { path: "detail/:id", element: <BookingDetail/>}

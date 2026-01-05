@@ -1,6 +1,8 @@
-import { Button, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag } from "antd";
+import { Button, Col, DatePicker, Form, Input, Modal, Popconfirm, Row, Select, Space, Table, Tag, Tabs } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined } from "@ant-design/icons";
+import { DeleteOutlined, EditOutlined, EyeOutlined, PlusOutlined, QuestionCircleOutlined, SearchOutlined, DownloadOutlined } from "@ant-design/icons";
+// Dynamic import for xlsx - install with: npm install xlsx
+let XLSX: typeof import("xlsx");
 import { getListBooking, deleteBooking, updateBookingStatus } from "../../services/booking";
 import { getAllStaff } from "../../services/staff";
 import toast from "react-hot-toast";
@@ -39,6 +41,7 @@ function BookingList() {
   } | null>(null);
   const [currentTime, setCurrentTime] = useState(dayjs());
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [viewMode, setViewMode] = useState<'list' | 'schedule'>('list');
 
   // Set giá trị mặc định cho form khi component mount
   useEffect(() => {
@@ -126,6 +129,20 @@ function BookingList() {
     queryKey: ["staff", "ktv"],
     queryFn: () => getAllStaff(USER_ROLE.STAFF),
   });
+
+  // Mặc định chọn bác sĩ đầu tiên
+  useEffect(() => {
+    if (doctorList && doctorList.length > 0 && !filter.doctorId) {
+      const firstDoctor = doctorList[0];
+      form.setFieldsValue({
+        doctorId: firstDoctor._id,
+      });
+      setFilter((prev) => ({
+        ...prev,
+        doctorId: firstDoctor._id,
+      }));
+    }
+  }, [doctorList, form, filter.doctorId]);
 
   const handleDelete = useCallback((id: string) => {
     deleteMutation.mutate(id);
@@ -334,14 +351,36 @@ function BookingList() {
     staffId?: string;
     dateRange?: [Dayjs, Dayjs];
   }) => {
+    const fromDate = values.dateRange?.[0] ? values.dateRange[0].format("YYYY-MM-DD") : undefined;
+    const toDate = values.dateRange?.[1] ? values.dateRange[1].format("YYYY-MM-DD") : undefined;
+    
     setFilter({
       search: values.search || undefined,
       status: values.status || undefined,
       doctorId: values.doctorId || undefined,
       staffId: values.staffId || undefined,
-      fromDate: values.dateRange?.[0] ? values.dateRange[0].format("YYYY-MM-DD") : undefined,
-      toDate: values.dateRange?.[1] ? values.dateRange[1].format("YYYY-MM-DD") : undefined,
+      fromDate,
+      toDate,
     });
+
+    // Kiểm tra điều kiện để hiển thị chế độ xem theo khung giờ
+    // Phải có doctorId và toDate = fromDate + 1 ngày
+    if (values.doctorId && fromDate && toDate) {
+      const fromDateDayjs = dayjs(fromDate);
+      const toDateDayjs = dayjs(toDate);
+      const expectedToDate = fromDateDayjs.add(1, 'day').format("YYYY-MM-DD");
+      if (toDateDayjs.format("YYYY-MM-DD") !== expectedToDate) {
+        // Nếu không đủ điều kiện, chuyển về chế độ danh sách
+        if (viewMode === 'schedule') {
+          setViewMode('list');
+        }
+      }
+    } else {
+      // Nếu không đủ điều kiện, chuyển về chế độ danh sách
+      if (viewMode === 'schedule') {
+        setViewMode('list');
+      }
+    }
   };
 
   const handleReset = () => {
@@ -361,7 +400,7 @@ function BookingList() {
     });
   };
 
-  const getStatusText = (status: BOOKING_STATUS): string => {
+  const getStatusText = useCallback((status: BOOKING_STATUS): string => {
     const statusMap: Record<BOOKING_STATUS, string> = {
       [BOOKING_STATUS.BOOKED]: "Đã đặt",
       [BOOKING_STATUS.ARRIVED]: "Đã đến",
@@ -371,7 +410,439 @@ function BookingList() {
       // [BOOKING_STATUS.CHANGED]: "Thay đổi lịch",
     };
     return statusMap[status] || status;
-  };
+  }, []);
+
+  // Tạo danh sách các khung giờ 30 phút từ 8h đến 22h
+  const timeSlots = useMemo(() => {
+    const slots: Array<{ start: Dayjs; end: Dayjs; label: string }> = [];
+    const startHour = 8;
+    const endHour = 22;
+    
+    if (!filter.fromDate || !filter.doctorId) return slots;
+    
+    const selectedDate = dayjs(filter.fromDate);
+    
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += 30) {
+        const start = selectedDate.hour(hour).minute(minute).second(0).millisecond(0);
+        const end = start.add(30, 'minute');
+        slots.push({
+          start,
+          end,
+          label: `${start.format("HH:mm")} - ${end.format("HH:mm")}`,
+        });
+      }
+    }
+    
+    return slots;
+  }, [filter.fromDate, filter.doctorId]);
+
+  // Nhóm lịch hẹn theo khung giờ
+  const bookingsByTimeSlot = useMemo(() => {
+    if (!data?.data || !filter.doctorId || !filter.fromDate) return new Map();
+    
+    const map = new Map<string, IBooking[]>();
+    
+    data.data.forEach((booking) => {
+      // Chỉ lấy booking của bác sĩ được chọn và không bị hủy
+      const bookingDoctorId = typeof booking.doctorId === 'string' 
+        ? booking.doctorId 
+        : booking.doctorId?._id;
+      
+      if (bookingDoctorId !== filter.doctorId || booking.status === BOOKING_STATUS.CANCELLED) {
+        return;
+      }
+      
+      if (!booking.appointmentDate) return;
+      
+      const appointmentTime = dayjs(booking.appointmentDate);
+      
+      // Tìm khung giờ chứa appointmentDate
+      for (const slot of timeSlots) {
+        if (appointmentTime.isSameOrAfter(slot.start, 'minute') && appointmentTime.isBefore(slot.end, 'minute')) {
+          const slotKey = slot.label;
+          if (!map.has(slotKey)) {
+            map.set(slotKey, []);
+          }
+          const bookingsInSlot = map.get(slotKey)!;
+          if (bookingsInSlot.length < 3) {
+            bookingsInSlot.push(booking);
+          }
+          break;
+        }
+      }
+    });
+    
+    // Sắp xếp lịch hẹn trong mỗi khung giờ theo appointmentDate
+    map.forEach((bookings) => {
+      bookings.sort((a, b) => {
+        const timeA = dayjs(a.appointmentDate);
+        const timeB = dayjs(b.appointmentDate);
+        return timeA.valueOf() - timeB.valueOf();
+      });
+    });
+    
+    return map;
+  }, [data?.data, filter.doctorId, filter.fromDate, timeSlots]);
+
+  // Kiểm tra điều kiện để hiển thị chế độ xem theo khung giờ
+  // Điều kiện: có doctorId, có fromDate và toDate = fromDate + 1 ngày
+  const canShowScheduleView = useMemo(() => {
+    if (!filter.doctorId || !filter.fromDate || !filter.toDate) return false;
+    const fromDateDayjs = dayjs(filter.fromDate);
+    const toDateDayjs = dayjs(filter.toDate);
+    const expectedToDate = fromDateDayjs.add(1, 'day').format("YYYY-MM-DD");
+    return toDateDayjs.format("YYYY-MM-DD") === expectedToDate;
+  }, [filter.doctorId, filter.fromDate, filter.toDate]);
+
+  // Tạo dataSource cho chế độ xem theo khung giờ
+  // Mỗi khung giờ sẽ có tối đa 3 dòng (lịch hẹn), nếu không đủ thì để trống
+  const scheduleDataSource = useMemo(() => {
+    const dataSource: Array<{ key: string; booking: IBooking | null; timeSlot: string; index: number }> = [];
+    let globalIndex = 1;
+
+    timeSlots.forEach((slot) => {
+      const bookings = bookingsByTimeSlot.get(slot.label) || [];
+      
+      // Tạo tối đa 3 dòng cho mỗi khung giờ
+      for (let i = 0; i < 3; i++) {
+        dataSource.push({
+          key: `${slot.label}-${i}`,
+          booking: bookings[i] || null,
+          timeSlot: slot.label,
+          index: globalIndex++,
+        });
+      }
+    });
+
+    return dataSource;
+  }, [timeSlots, bookingsByTimeSlot]);
+
+  // Hàm xuất Excel cho chế độ xem theo khung giờ
+  const handleExportExcel = useCallback(async () => {
+    if (!filter.fromDate || !filter.doctorId || !scheduleDataSource || scheduleDataSource.length === 0) {
+      toast.error("Vui lòng chọn bác sĩ và thời gian");
+      return;
+    }
+
+    try {
+      // Dynamic import xlsx
+      const xlsxModule = await import("xlsx");
+      XLSX = xlsxModule;
+
+      const doctorName = doctorList?.find(d => d._id === filter.doctorId)?.name || "Chưa xác định";
+      const dateStr = dayjs(filter.fromDate).format("DD/MM/YYYY");
+
+      // Tạo workbook
+      const wb = XLSX.utils.book_new();
+
+      // Tạo dữ liệu cho Excel
+      const excelData: (string | number)[][] = [];
+
+      // Dòng đầu tiên: Thông tin thời gian và bác sĩ
+      excelData.push([]);
+      excelData.push(["Thời gian", dateStr]);
+      excelData.push(["Lịch cho bác sĩ", doctorName]);
+      excelData.push([]); // Dòng trống
+
+      // Header của bảng
+      excelData.push([
+        "Khung giờ",
+        "Số TT",
+        "Tên khách hàng",
+        "Dịch vụ",
+        "Ngày hẹn",
+        "Thời gian đến",
+        "Thời gian chờ",
+        "Trạng thái",
+        "Ghi chú",
+        "Lý do hủy"
+      ]);
+
+      // Dữ liệu từ scheduleDataSource (chỉ lấy các dòng có booking)
+      scheduleDataSource.forEach((record) => {
+        if (record.booking) {
+          const booking = record.booking;
+          const waitingTime = calculateWaitingTime(booking);
+          
+          excelData.push([
+            record.timeSlot,
+            record.index,
+            booking.customerId?.name || "-",
+            typeof booking.serviceId === 'object' ? booking.serviceId?.name || "-" : "-",
+            booking.appointmentDate ? dayjs(booking.appointmentDate).format("DD/MM/YYYY HH:mm") : "-",
+            booking.comingTime ? dayjs(booking.comingTime).format("DD/MM/YYYY HH:mm") : "-",
+            waitingTime || "-",
+            getStatusText(booking.status),
+            booking.note || "-",
+            booking.status === BOOKING_STATUS.CANCELLED && booking.cancellationReason 
+              ? booking.cancellationReason 
+              : "-"
+          ]);
+        }
+      });
+
+      // Tạo worksheet từ dữ liệu
+      const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+      // Set độ rộng cột
+      ws['!cols'] = [
+        { wch: 15 }, // Khung giờ
+        { wch: 8 },  // Số TT
+        { wch: 20 }, // Tên khách hàng
+        { wch: 25 }, // Dịch vụ
+        { wch: 18 }, // Ngày hẹn
+        { wch: 18 }, // Thời gian đến
+        { wch: 15 }, // Thời gian chờ
+        { wch: 12 }, // Trạng thái
+        { wch: 30 }, // Ghi chú
+        { wch: 30 }, // Lý do hủy
+      ];
+
+      // Merge cells cho dòng header thông tin
+      if (!ws['!merges']) ws['!merges'] = [];
+      ws['!merges'].push(
+        { s: { r: 1, c: 1 }, e: { r: 1, c: 9 } }, // Merge dòng "Thời gian"
+        { s: { r: 2, c: 1 }, e: { r: 2, c: 9 } }  // Merge dòng "Lịch cho bác sĩ"
+      );
+
+      // Thêm worksheet vào workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Lịch bác sĩ");
+
+      // Tạo tên file
+      const fileName = `Lich_Bac_Si_${doctorName.replace(/\s+/g, '_')}_${dateStr.replace(/\//g, '_')}.xlsx`;
+
+      // Xuất file
+      XLSX.writeFile(wb, fileName);
+      toast.success("Xuất Excel thành công");
+    } catch (error) {
+      console.error("Lỗi khi xuất Excel:", error);
+      toast.error("Xuất Excel thất bại");
+    }
+  }, [filter.fromDate, filter.doctorId, scheduleDataSource, doctorList, calculateWaitingTime, getStatusText]);
+
+  // Columns cho chế độ xem theo khung giờ (thêm cột Khung giờ ở đầu)
+  const scheduleColumns = useMemo(() => [
+    {
+      title: "Khung giờ",
+      dataIndex: "timeSlot",
+      key: "timeSlot",
+      width: 150,
+      fixed: 'left' as const,
+      render: (text: string, record: { booking: IBooking | null; index: number; timeSlot: string }) => {
+        // Chỉ hiển thị khung giờ ở dòng đầu tiên của mỗi khung giờ (index: 1, 4, 7, 10, ...)
+        // index bắt đầu từ 1, mỗi khung giờ có 3 dòng
+        const isFirstInSlot = (record.index - 1) % 3 === 0;
+        if (isFirstInSlot) {
+          return <strong>{text}</strong>;
+        }
+        return "";
+      },
+      onCell: (record: { booking: IBooking | null; index: number; timeSlot: string }) => {
+        const isFirstInSlot = (record.index - 1) % 3 === 0;
+        if (isFirstInSlot) {
+          // Đếm số booking thực tế trong khung giờ này để set rowSpan
+          const bookings = bookingsByTimeSlot.get(record.timeSlot) || [];
+          const bookingCount = bookings.length;
+          // Nếu không có booking nào, rowSpan = 3, nếu có thì rowSpan = bookingCount
+          return {
+            rowSpan: bookingCount === 0 ? 3 : bookingCount,
+          };
+        }
+        return {
+          rowSpan: 0,
+        };
+      },
+    },
+    {
+      title: "STT",
+      render: (_: unknown, record: { booking: IBooking | null; index: number }) => record.index,
+      width: 70,
+      ...(isMobile ? {} : { fixed: 'left' as const }),
+    },
+    {
+      title: "Khách hàng",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return (
+          <div>
+            <div>{record.booking.customerId?.name || "-"}</div>
+            <div style={{ fontSize: 12, color: "#666" }}>{record.booking.customerId?.phone || "-"}</div>
+          </div>
+        );
+      },
+      ...(isMobile ? {} : { fixed: 'left' as const }),
+    },
+    {
+      title: "Dịch vụ",
+      onCell: () => ({
+        style: { minWidth: 180 },
+      }),
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return record.booking.serviceId?.name || "-";
+      },
+      ...(isMobile ? {} : { fixed: 'left' as const }),
+    },
+    {
+      title: "Ngày hẹn",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return record.booking.appointmentDate ? dayjs(record.booking.appointmentDate).format("DD/MM/YYYY HH:mm") : "-";
+      },
+    },
+    {
+      title: "Thời gian đến",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return record.booking.comingTime ? dayjs(record.booking.comingTime).format("DD/MM/YYYY HH:mm") : "-";
+      },
+    },
+    {
+      title: "Thời gian chờ",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        const waitingTime = calculateWaitingTime(record.booking);
+        if (waitingTime === null) {
+          return "-";
+        }
+        return (
+          <div style={{ 
+            fontFamily: 'monospace', 
+            fontSize: 16, 
+            fontWeight: 'bold',
+            color: record.booking.status === BOOKING_STATUS.ARRIVED ? '#ff9800' : 
+                   record.booking.status === BOOKING_STATUS.IN_PROGRESS ? '#1890ff' : '#52c41a'
+          }}>
+            {waitingTime}
+          </div>
+        );
+      },
+    },
+    {
+      title: "Bác sỹ/ KTV",
+      onCell: () => ({
+        style: { minWidth: 220 },
+      }),
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        if (record.booking.type === SERVICE_TYPE.TRICK) {
+          return record.booking.doctorId?.name || "-";
+        }
+        if (record.booking.type === SERVICE_TYPE.JOB) {
+          const staffNames =
+            record.booking.staffAssignments
+              ?.map((assignment) => assignment.staffId?.name)
+              .filter((name): name is string => Boolean(name)) || [];
+          if (staffNames.length > 0) {
+            return staffNames.join(", ");
+          }
+          return "-";
+        }
+        return record.booking.doctorId?.name || "-";
+      },
+    },
+    {
+      title: "Trạng thái",
+      render: (_: unknown, record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        const bookingStatus = record.booking.status;
+        const isPendingForThisRecord = pendingStatusChange?.id === record.booking._id;
+        
+        return (
+          <Select
+            value={bookingStatus}
+            onChange={(value) => handleStatusChange(record.booking!._id, value, bookingStatus)}
+            style={{ width: 'auto', minWidth: 'fit-content' }}
+            loading={updateStatusMutation.isPending && isPendingForThisRecord}
+            disabled={
+              updateStatusMutation.isPending || 
+              (pendingStatusChange !== null && !isPendingForThisRecord) ||
+              bookingStatus === BOOKING_STATUS.CANCELLED
+            }
+          >
+            <Option value={BOOKING_STATUS.BOOKED}>
+              <Tag color="blue">Đã đặt</Tag>
+            </Option>
+            <Option value={BOOKING_STATUS.ARRIVED}>
+              <Tag color="cyan">Đã đến</Tag>
+            </Option>
+            <Option value={BOOKING_STATUS.IN_PROGRESS}>
+              <Tag color="orange">Đang làm</Tag>
+            </Option>
+            <Option value={BOOKING_STATUS.COMPLETED}>
+              <Tag color="green">Hoàn thành</Tag>
+            </Option>
+            <Option value={BOOKING_STATUS.CANCELLED}>
+              <Tag color="red">Hủy</Tag>
+            </Option>
+          </Select>
+        );
+      },
+    },
+    {
+      title: "Ưu tiên",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return record.booking.priority ? <Tag color="red">Có</Tag> : <Tag>Không</Tag>;
+      },
+    },
+    {
+      title: "KS",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return record.booking.KS ? "KS" : "";
+      },
+    },
+    {
+      title: "Lý do hủy",
+      render: (record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return record.booking.status === BOOKING_STATUS.CANCELLED && record.booking.cancellationReason
+          ? <div style={{ maxWidth: 200, wordBreak: 'break-word' }}>{record.booking.cancellationReason}</div>
+          : "-";
+      },
+    },
+    {
+      title: "",
+      key: "actions",
+      render: (_: unknown, record: { booking: IBooking | null }) => {
+        if (!record.booking) return "-";
+        return (
+          <Space size="middle">
+            <Link to={`detail/${record.booking._id}`}>
+              <Button
+                color="blue"
+                variant="solid"
+                icon={<EyeOutlined />}
+              ></Button>
+            </Link>
+            <Link to={`edit/${record.booking._id}`}>
+              <Button
+                color="orange"
+                variant="solid"
+                icon={<EditOutlined />}
+              ></Button>
+            </Link>
+            <Popconfirm
+              title="Xác nhận xóa"
+              description="Bạn có chắc chắn muốn xóa không?"
+              onConfirm={() => handleDelete(record.booking!._id)}
+              okText="Xác nhận"
+              cancelText="Không"
+              icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
+            >
+              <Button
+                color="danger"
+                variant="solid"
+                icon={<DeleteOutlined />}
+              ></Button>
+            </Popconfirm>
+          </Space>
+        );
+      },
+    },
+  ], [isMobile, pendingStatusChange, updateStatusMutation.isPending, calculateWaitingTime, handleDelete, handleStatusChange, bookingsByTimeSlot]);
 
   const columns = useMemo(() => [
     {
@@ -556,7 +1027,7 @@ function BookingList() {
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h3>Danh sách lịch hẹn</h3>
-        <Link to="add">
+        <Link to="/booking/add">
           <Button type="primary" icon={<PlusOutlined />}>
             Thêm mới
           </Button>
@@ -643,6 +1114,15 @@ function BookingList() {
         </Row>
       </Form>
 
+      {/* Tabs để chuyển đổi giữa danh sách và xem theo khung giờ */}
+      <Tabs
+        activeKey={viewMode}
+        onChange={(key) => setViewMode(key as 'list' | 'schedule')}
+        items={[
+          {
+            key: 'list',
+            label: 'Danh sách',
+            children: (
       <Table
         columns={columns as ColumnType<IBooking>[]}
         scroll={{ x: isMobile ? 'max-content' : 1500 }}
@@ -650,6 +1130,41 @@ function BookingList() {
         dataSource={data?.data.map((item) => ({ ...item, key: item._id }))}
         locale={{ emptyText: 'Không có lịch đặt trong thời gian này' }}
         pagination={false}
+              />
+            ),
+          },
+          ...(canShowScheduleView ? [{
+            key: 'schedule',
+            label: 'Xem theo khung giờ',
+            children: (
+              <div>
+                {filter.fromDate && filter.doctorId && (
+                  <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <Tag color="blue">Ngày: {dayjs(filter.fromDate).format("DD/MM/YYYY")}</Tag>
+                      <Tag color="green">Bác sĩ: {doctorList?.find(d => d._id === filter.doctorId)?.name || "-"}</Tag>
+                    </div>
+                    <Button 
+                      type="primary" 
+                      icon={<DownloadOutlined />}
+                      onClick={handleExportExcel}
+                    >
+                      Xuất Excel
+                    </Button>
+                  </div>
+                )}
+                <Table
+                  columns={scheduleColumns as ColumnType<{ booking: IBooking | null; timeSlot: string; index: number }>[]}
+                  scroll={{ x: isMobile ? 'max-content' : 1500 }}
+                  loading={isLoading}
+                  dataSource={scheduleDataSource}
+                  locale={{ emptyText: 'Không có lịch đặt trong thời gian này' }}
+                  pagination={false}
+                />
+              </div>
+            ),
+          }] : []),
+        ]}
       />
 
       {/* Modal xác nhận đổi trạng thái */}

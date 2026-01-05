@@ -1,10 +1,10 @@
-import { Button, Col, DatePicker, Flex, Form, Input, Row, Select, Space, Card, Divider, message, Modal, Descriptions, Tag, InputNumber } from "antd";
+import { Button, Col, DatePicker, Flex, Form, Input, Row, Select, Space, Card, Divider, message, Modal, Descriptions, Tag, InputNumber, List, Switch } from "antd";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import Toast from "react-hot-toast";
 import { useState } from "react";
 import { CreateBooking, addBooking } from "../../services/booking";
-import { getCustomerByPhone, addCustomer, updateCustomer } from "../../services/customer";
+import { getCustomersByPhone, addCustomer, updateCustomer } from "../../services/customer";
 import { CreateCustomer } from "../../types/customer";
 import ScheduleSelector, { ScheduleSelectionInfo } from "../../components/ScheduleSelector";
 import dayjs, { Dayjs } from "dayjs";
@@ -31,8 +31,11 @@ function BookingAdd() {
   const [customerId, setCustomerId] = useState<string>("");
   const [customerFound, setCustomerFound] = useState<ICustomer | null>(null);
   const [isSearchingCustomer, setIsSearchingCustomer] = useState(false);
+  const [customerSelectModalOpen, setCustomerSelectModalOpen] = useState(false);
+  const [foundCustomers, setFoundCustomers] = useState<ICustomer[]>([]);
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
   const [pendingBookingData, setPendingBookingData] = useState<CreateBooking | null>(null);
+  const [isNewCustomer, setIsNewCustomer] = useState<boolean>(false);
 
 
   const { data: services, isLoading: isLoadingServices } = useQuery({
@@ -46,23 +49,48 @@ function BookingAdd() {
       return;
     }
 
+    // Nếu đang ở chế độ khách mới, không tìm kiếm
+    if (isNewCustomer) {
+      return;
+    }
+
     setIsSearchingCustomer(true);
     try {
-      const customer = await getCustomerByPhone(phone);
-      setCustomerFound(customer);
-      setCustomerId(customer._id);
+      const customers = await getCustomersByPhone(phone);
       
-      // Auto-fill form
-      form.setFieldsValue({
-        name: customer.name,
-        phone: customer.phone,
-        address: customer.address,
-        yearOfBirth: customer.yearOfBirth || undefined,
-        gender: customer.gender || "other",
-        customerNote: customer.note || "",
-      });
-      
-      message.success("Đã tìm thấy thông tin khách hàng");
+      if (customers.length === 0) {
+        // Không tìm thấy, reset customer
+        setCustomerFound(null);
+        setCustomerId("");
+        form.setFieldsValue({
+          name: "",
+          address: "",
+          yearOfBirth: undefined,
+          gender: "other",
+          customerNote: "",
+        });
+      } else if (customers.length === 1) {
+        // Chỉ có 1 khách hàng, tự động chọn
+        const customer = customers[0];
+        setCustomerFound(customer);
+        setCustomerId(customer._id);
+        
+        // Auto-fill form
+        form.setFieldsValue({
+          name: customer.name,
+          phone: customer.phone,
+          address: customer.address,
+          yearOfBirth: customer.yearOfBirth || undefined,
+          gender: customer.gender || "other",
+          customerNote: customer.note || "",
+        });
+        
+        message.success("Đã tìm thấy thông tin khách hàng");
+      } else {
+        // Có nhiều khách hàng, hiển thị modal để chọn
+        setFoundCustomers(customers);
+        setCustomerSelectModalOpen(true);
+      }
     } catch {
       // Không tìm thấy, reset customer
       setCustomerFound(null);
@@ -77,6 +105,26 @@ function BookingAdd() {
     } finally {
       setIsSearchingCustomer(false);
     }
+  };
+
+  // Xử lý khi chọn khách hàng từ modal
+  const handleSelectCustomer = (customer: ICustomer) => {
+    setCustomerFound(customer);
+    setCustomerId(customer._id);
+    setCustomerSelectModalOpen(false);
+    setFoundCustomers([]);
+    
+    // Auto-fill form
+    form.setFieldsValue({
+      name: customer.name,
+      phone: customer.phone,
+      address: customer.address,
+      yearOfBirth: customer.yearOfBirth || undefined,
+      gender: customer.gender || "other",
+      customerNote: customer.note || "",
+    });
+    
+    message.success("Đã chọn khách hàng");
   };
 
   // Tạo khách hàng mới
@@ -218,6 +266,7 @@ function BookingAdd() {
       priority: (values.priority as boolean) || false,
       note: (values.bookingNote as string) || "",
       type: selectedService.type,
+      KS: (values.KS as boolean) || false,
     };
 
     // Save pending booking data and show confirmation modal
@@ -264,6 +313,7 @@ function BookingAdd() {
             {/* Phần 1: Thông tin khách hàng */}
             <Card title="Thông tin khách hàng" style={{ marginBottom: 24 }}>
               <Row gutter={24}>
+
                 <Col span={12}>
                   <Form.Item
                     name="phone"
@@ -284,13 +334,14 @@ function BookingAdd() {
                       enterButton="Tìm kiếm"
                       onChange={(e) => {
                         const phone = e.target.value;
-                        if (phone.length === 10) {
+                        if (phone.length === 10 && !isNewCustomer) {
                           handlePhoneSearch(phone);
                         } else {
                           setCustomerFound(null);
                           setCustomerId("");
                         }
                       }}
+                      disabled={isNewCustomer}
                     />
                   </Form.Item>
 
@@ -367,6 +418,32 @@ function BookingAdd() {
                       <Option value="other">Khác</Option>
                     </Select>
                   </Form.Item>
+                </Col>
+
+                <Col span={24} style={{ marginBottom: 16 }}>
+                  <Space>
+                    <span>Khách mới:</span>
+                    <Switch
+                      checked={isNewCustomer}
+                      onChange={(checked) => {
+                        setIsNewCustomer(checked);
+                        // Reset customer khi chuyển chế độ
+                        setCustomerFound(null);
+                        setCustomerId("");
+                        setFoundCustomers([]);
+                        if (checked) {
+                          // Chế độ khách mới: reset form
+                          form.setFieldsValue({
+                            name: "",
+                            address: "",
+                            yearOfBirth: undefined,
+                            gender: "other",
+                            customerNote: "",
+                          });
+                        }
+                      }}
+                    />
+                  </Space>
                 </Col>
               </Row>
             </Card>
@@ -504,6 +581,15 @@ function BookingAdd() {
                       showCount
                     />
                   </Form.Item>
+
+                  <Form.Item
+                    name="KS"
+                    label="Không hẹn trước (KS)"
+                    valuePropName="checked"
+                    initialValue={false}
+                  >
+                    <Switch />
+                  </Form.Item>
                 </Col>
               </Row>
             </Card>
@@ -537,6 +623,66 @@ function BookingAdd() {
           serviceId={selectedServiceId}
         />
       )}
+
+      {/* Modal chọn khách hàng khi có nhiều kết quả */}
+      <Modal
+        title="Chọn khách hàng"
+        open={customerSelectModalOpen}
+        onCancel={() => {
+          setCustomerSelectModalOpen(false);
+          setFoundCustomers([]);
+        }}
+        footer={null}
+        width={600}
+      >
+        <div style={{ marginBottom: 16, color: "#666" }}>
+          Tìm thấy {foundCustomers.length} khách hàng với số điện thoại này. Vui lòng chọn một khách hàng:
+        </div>
+        <List
+          itemLayout="horizontal"
+          dataSource={foundCustomers}
+          renderItem={(customer) => (
+            <List.Item
+              style={{
+                cursor: "pointer",
+                padding: "12px",
+                border: "1px solid #d9d9d9",
+                borderRadius: "4px",
+                marginBottom: "8px",
+                transition: "all 0.3s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "#1890ff";
+                e.currentTarget.style.backgroundColor = "#f0f9ff";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "#d9d9d9";
+                e.currentTarget.style.backgroundColor = "transparent";
+              }}
+              onClick={() => handleSelectCustomer(customer)}
+            >
+              <List.Item.Meta
+                title={
+                  <div>
+                    <strong>{customer.name}</strong>
+                    <Tag color={customer.gender === "male" ? "blue" : customer.gender === "female" ? "pink" : "default"} style={{ marginLeft: 8 }}>
+                      {customer.gender === "male" ? "Nam" : customer.gender === "female" ? "Nữ" : "Khác"}
+                    </Tag>
+                  </div>
+                }
+                description={
+                  <div>
+                    <div>SĐT: {customer.phone}</div>
+                    <div>Địa chỉ: {customer.address}</div>
+                    {customer.yearOfBirth && <div>Năm sinh: {customer.yearOfBirth}</div>}
+                    {customer.note && <div>Ghi chú: {customer.note}</div>}
+                  </div>
+                }
+              />
+            </List.Item>
+          )}
+        />
+      </Modal>
 
       {/* Modal xác nhận thông tin đặt lịch */}
       <Modal

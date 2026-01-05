@@ -27,6 +27,7 @@ interface IBooking {
   status: BOOKING_STATUS;
   isDeleted: IS_DELETED;
   cancellationReason?: string;
+  KS?: boolean;
   staffAssignments?: IBookingStaffAssignment[];
   createdAt: Date;
   updatedAt: Date;

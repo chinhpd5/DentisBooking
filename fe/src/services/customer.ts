@@ -27,3 +27,8 @@ export const getCustomerByPhone = async (phone: string) => {
   return data.data;
 };
 
+export const getCustomersByPhone = async (phone: string) => {
+  const { data } = await axiosInstance.get(`/customer/phones/${phone}`);
+  return data.data;
+};
+

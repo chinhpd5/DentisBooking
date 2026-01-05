@@ -1,5 +1,5 @@
 import {
-  // AreaChartOutlined,
+  AreaChartOutlined,
   BellOutlined,
   HomeOutlined,
   InsertRowBelowOutlined,
@@ -55,6 +55,7 @@ const allMenuItems: MenuItem[] = [
     icon: <ScheduleOutlined />,
     children: [
       {key: "booking-list", label: "Danh sách Đặt lịch", icon: <UnorderedListOutlined />},
+      {key: "booking-doctor", label: "Lịch bác sĩ", icon: <UserOutlined />},
       {key: "booking-add", label: "Thêm mới Đặt lịch", icon: <PlusOutlined />}
     ]
   },
@@ -95,11 +96,11 @@ const allMenuItems: MenuItem[] = [
       {key: "location-list", label: "Quản lý tầng", icon: <UnorderedListOutlined />},
     ]
   },
-  // {
-  //   key: "dashboard",
-  //   label: "Báo cáo",
-  //   icon: <AreaChartOutlined />,
-  // },
+  {
+    key: "booking-statistics",
+    label: "Thống kê lịch hẹn",
+    icon: <AreaChartOutlined />,
+  },
   {
     key: "user",
     label: "Quản lý Tài khoản",
@@ -337,6 +338,9 @@ function MainLayout() {
         case 'booking-list':
           naviagte('/booking')
           break;
+        case 'booking-doctor':
+          naviagte('/booking/doctor')
+          break;
         case 'booking-add':
           naviagte('/booking/add')
           break;
@@ -345,6 +349,9 @@ function MainLayout() {
           break;
         case 'dashboard':
           naviagte('/dashboard')
+          break;
+        case 'booking-statistics':
+          naviagte('/booking-statistics')
           break;
     }
     }else{
