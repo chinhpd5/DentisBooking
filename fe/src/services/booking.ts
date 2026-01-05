@@ -11,14 +11,13 @@ export interface CreateBooking {
   doctorId?: string;
   serviceId: string;
   type?: string;
+  KS?: boolean;
 }
 
 export const addBooking = (data: CreateBooking) => 
   axiosInstance.post("/booking", data);
 
 export const getListBooking = async (
-  page: number,
-  limit: number,
   search?: string,
   status?: BOOKING_STATUS,
   doctorId?: string,
@@ -26,13 +25,15 @@ export const getListBooking = async (
   fromDate?: string,
   toDate?: string
 ) => {
-  let query = `booking?page=${page}&limit=${limit}`;
-  if (search) query += `&search=${encodeURIComponent(search)}`;
-  if (status) query += `&status=${status}`;
-  if (doctorId) query += `&doctorId=${doctorId}`;
-  if (staffId) query += `&staffId=${staffId}`;
-  if (fromDate) query += `&fromDate=${fromDate}`;
-  if (toDate) query += `&toDate=${toDate}`;
+  let query = `booking?`;
+  const params = new URLSearchParams();
+  if (search) params.append('search', search);
+  if (status) params.append('status', status);
+  if (doctorId) params.append('doctorId', doctorId);
+  if (staffId) params.append('staffId', staffId);
+  if (fromDate) params.append('fromDate', fromDate);
+  if (toDate) params.append('toDate', toDate);
+  query += params.toString();
   const { data } = await axiosInstance.get(query);
   return data;
 };

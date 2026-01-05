@@ -96,8 +96,8 @@ const hasBookingConflict = async (doctorId, timeStart, timeEnd, excludeBookingId
 };
 
 // Helper function to check maximum bookings in a 30-minute slot for TRICK type
-// Returns true if slot is full (>= 3 bookings), false otherwise
-const isTrickSlotFull = async (appointmentDate) => {
+// Returns true if slot is full (>= 3 bookings) for a specific doctor, false otherwise
+const isTrickSlotFull = async (appointmentDate, doctorId) => {
   // Calculate the 30-minute slot boundaries
   const appointmentTime = new Date(appointmentDate);
   const minutes = appointmentTime.getMinutes();
@@ -110,8 +110,8 @@ const isTrickSlotFull = async (appointmentDate) => {
   const slotEnd = new Date(slotStart);
   slotEnd.setMinutes(slotEnd.getMinutes() + 30);
   
-  // Count bookings in this 30-minute slot (TRICK type only, not cancelled)
-  const bookingCount = await Booking.countDocuments({
+  // Build query to count bookings in this 30-minute slot for the specific doctor
+  const query = {
     type: SERVICE_TYPE.TRICK,
     isDeleted: IS_DELETED.NO,
     status: { $ne: BOOKING_STATUS.CANCELLED },
@@ -119,9 +119,17 @@ const isTrickSlotFull = async (appointmentDate) => {
       $gte: slotStart,
       $lt: slotEnd,
     },
-  });
+  };
   
-  // Return true if slot is full (>= 3 bookings)
+  // Add doctorId filter if provided
+  if (doctorId) {
+    query.doctorId = doctorId;
+  }
+  
+  // Count bookings in this 30-minute slot (TRICK type only, not cancelled, for specific doctor)
+  const bookingCount = await Booking.countDocuments(query);
+  
+  // Return true if slot is full (>= 3 bookings) for this doctor
   return bookingCount >= 3;
 };
 
@@ -147,26 +155,79 @@ const autoAssignStaffForJobs = async (bookingId, service, appointmentDate, timeE
     isDeleted: IS_DELETED.NO,
     status: 1, // ACTIVE
   });
-  
+
   if (availableStaff.length === 0) {
     throw new Error('Không có KTV nào khả dụng');
   }
-  
+
   // Extract all job IDs (ObjectId strings or objects)
   const allJobIds = jobIds.map(job => job._id || job);
-  
+
   // Calculate total time for all jobs (sum of all job times in seconds)
   const totalJobTime = jobIds.reduce((total, job) => {
     return total + (job.time || 0); // job.time is in seconds
   }, 0);
-  
+
   // Calculate timeStart and timeEnd based on appointmentDate and total job time
   const timeStart = new Date(appointmentDate);
   const timeEndDate = new Date(timeStart.getTime() + totalJobTime * 1000); // Convert seconds to milliseconds
+
+  // For TRICK type with countStaff, assign staff evenly by selecting those with least assignments
+  // Count current assignments for each staff member in the same time slot (ca)
+  // Calculate the time slot (ca) from appointmentDate
+  // Ca: làm tròn xuống đến giờ tròn (0 phút) hoặc giờ rưỡi (30 phút) gần nhất, kéo dài 30 phút
+  const appointmentTime = new Date(appointmentDate);
+  const hours = appointmentTime.getHours();
+  const minutes = appointmentTime.getMinutes();
   
-  // For TRICK type with countStaff, assign staff without checking conflicts (allow overlapping)
-  // Just take the first countStaff staff members without conflict check
-  const assignedStaff = availableStaff.slice(0, countStaff);
+  // Làm tròn phút: < 30 thì về 0, >= 30 thì về 30
+  const roundedMinutes = minutes < 30 ? 0 : 30;
+  
+  // Tính ca bắt đầu và kết thúc
+  const slotStart = new Date(appointmentTime);
+  slotStart.setHours(hours, roundedMinutes, 0, 0);
+  
+  const slotEnd = new Date(slotStart);
+  slotEnd.setMinutes(slotEnd.getMinutes() + 30);
+  
+  // Get all active booking IDs
+  const activeBookingIds = await Booking.find({
+    isDeleted: IS_DELETED.NO,
+    status: { $ne: BOOKING_STATUS.CANCELLED },
+  }).distinct('_id');
+  
+  // Count assignments for each staff member in the same time slot (ca) linked to active bookings
+  const staffWithCounts = await Promise.all(
+    availableStaff.map(async (staff) => {
+      // Đếm số StaffAssignment trong cùng ca (time slot)
+      const assignmentCount = await StaffAssignment.countDocuments({
+        staffId: staff._id,
+        bookingId: { $in: activeBookingIds },
+        timeStart: {
+          $gte: slotStart,
+          $lt: slotEnd,
+        },
+      });
+      
+      return {
+        staff,
+        assignmentCount,
+      };
+    })
+  );
+
+  // Sort by assignment count (ascending) to get staff with least work
+  staffWithCounts.sort((a, b) => {
+    // First sort by assignment count
+    if (a.assignmentCount !== b.assignmentCount) {
+      return a.assignmentCount - b.assignmentCount;
+    }
+    // If same count, maintain original order (stable sort)
+    return 0;
+  });
+
+  // Select the first countStaff staff members (those with least assignments)
+  const assignedStaff = staffWithCounts.slice(0, countStaff).map(item => item.staff);
   
   if (assignedStaff.length < countStaff) {
     throw new Error(`Không đủ KTV khả dụng. Cần ${countStaff} KTV nhưng chỉ có ${assignedStaff.length} KTV khả dụng`);
@@ -214,13 +275,20 @@ export const createBooking = async (req, res) => {
     
     // Check for conflicts based on service type
     if (serviceType === SERVICE_TYPE.TRICK) {
-      // For trick, check maximum 3 bookings per 30-minute slot (no conflict check)
-      const slotFull = await isTrickSlotFull(data.appointmentDate);
+      // For trick, check maximum 3 bookings per 30-minute slot per doctor
+      if (!data.doctorId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Bác sĩ là bắt buộc cho loại dịch vụ TRICK',
+        });
+      }
+      
+      const slotFull = await isTrickSlotFull(data.appointmentDate, data.doctorId);
       
       if (slotFull) {
         return res.status(409).json({
           success: false,
-          message: 'Khung giờ này đã đầy (tối đa 3 lịch hẹn trong 30 phút)',
+          message: 'Bác sĩ này đã có đủ 3 lịch hẹn trong khung giờ 30 phút này',
         });
       }
     } else if (serviceType === SERVICE_TYPE.JOB) {
@@ -337,8 +405,6 @@ export const createBooking = async (req, res) => {
 export const getListBooking = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       search = '', // search by note
       status,
       doctorId,
@@ -367,10 +433,6 @@ export const getListBooking = async (req, res) => {
       if (bookingIds.length === 0) {
         return res.status(200).json({
           success: true,
-          totalDocs: 0,
-          totalPages: 0,
-          currentPage: parseInt(page),
-          limit: parseInt(limit),
           data: [],
         });
       }
@@ -396,33 +458,22 @@ export const getListBooking = async (req, res) => {
       ];
     }
 
-    const options = {
-      page: parseInt(page),
-      limit: parseInt(limit),
-      sort: { createdAt: -1 },
-      populate: [
-        { path: 'customerId', select: 'name phone email' },
-        { path: 'doctorId', select: 'name role phone email' },
-        { path: 'serviceId', select: 'name time description status' },
-        { 
-          path: 'staffAssignments',
-          populate: [
-            { path: 'staffId', select: 'name role phone email status' },
-            { path: 'serviceIds', select: 'name time description status' }
-          ]
-        },
-      ],
-    };
-
-    const result = await Booking.paginate(query, options);
+    const bookings = await Booking.find(query)
+      .sort({ appointmentDate: 1, createdAt: 1 })
+      .populate('customerId', 'name phone email')
+      .populate('doctorId', 'name role phone email')
+      .populate('serviceId', 'name time description status')
+      .populate({ 
+        path: 'staffAssignments',
+        populate: [
+          { path: 'staffId', select: 'name role phone email status' },
+          { path: 'serviceIds', select: 'name time description status' }
+        ]
+      });
 
     res.status(200).json({
       success: true,
-      totalDocs: result.totalDocs,
-      totalPages: result.totalPages,
-      currentPage: result.page,
-      limit: result.limit,
-      data: result.docs,
+      data: bookings,
     });
   } catch (error) {
     res.status(500).json({

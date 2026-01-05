@@ -22,7 +22,6 @@ function TrickAdd() {
   // Watch các field để tính tổng thời gian
   const timeValue = Form.useWatch("time", form);
   const jobIds = Form.useWatch("jobIds", form);
-  const countStaff = Form.useWatch("countStaff", form);
 
   const { data: staffList } = useQuery({
     queryKey: ["staffs"],
@@ -173,36 +172,17 @@ function TrickAdd() {
                     placeholder="Nhập Số lượng KTV đi kèm"
                     style={{ width: "100%" }}
                     min={0}
-                    onChange={(value) => {
-                      form.validateFields(["jobIds"]);
-                      // Nếu countStaff = 0, xóa jobIds
-                      if (value === 0 || value === null) {
-                        form.setFieldsValue({ jobIds: [] });
-                      }
-                    }}
                   />
                 </Form.Item>
 
                 <Form.Item
                   name="jobIds"
                   label="Công việc chuẩn bị"
-                  rules={[
-                    {
-                      validator: (_, value) => {
-                        const currentCountStaff = form.getFieldValue("countStaff");
-                        if (currentCountStaff >= 1 && (!value || value.length === 0)) {
-                          return Promise.reject(new Error("Vui lòng chọn ít nhất 1 công việc chuẩn bị khi số lượng KTV đi kèm lớn hơn hoặc bằng 1"));
-                        }
-                        return Promise.resolve();
-                      },
-                    },
-                  ]}
                 >
                   <Select
                     mode="multiple"
                     placeholder="Chọn Công việc chuẩn bị"
                     allowClear
-                    disabled={!countStaff || countStaff === 0}
                   >
                     {jobList?.map((job: { _id: string; name: string; time: number }) => (
                       <Option key={job._id} value={job._id}>

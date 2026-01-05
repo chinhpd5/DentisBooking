@@ -3,14 +3,6 @@ export const createCustomer = async (req, res) => {
   try {
     const data = req.body;
 
-    const existingCustomer = await Customer.findOne({ phone: data.phone });
-    if (existingCustomer) {
-      return res.status(400).json({
-        success: false,
-        message: "Số điện thoại đã tồn tại",
-      });
-    }
-
     const newCustomer = await Customer.create(data);
     res.status(201).json({
       success: true,
@@ -163,6 +155,23 @@ export const getCustomerByPhone = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Lỗi khi lấy khách hàng theo số điện thoại",
+      error: error.message,
+    });
+  }
+};
+
+export const getCustomersByPhone = async (req, res) => {
+  try {
+    const { phone } = req.params;
+    const customers = await Customer.find({ phone }).sort({ createdAt: -1 });
+    res.status(200).json({
+      success: true,
+      data: customers,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Lỗi khi lấy danh sách khách hàng theo số điện thoại",
       error: error.message,
     });
   }

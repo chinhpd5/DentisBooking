@@ -385,62 +385,83 @@ function Home() {
       <Card
         title={`Lịch làm việc - ${selectedDate.format("DD/MM/YYYY")}`}
       extra={
-        <Row gutter={[8, 8]} style={{ width: "100%" }}>
-          <Col xs={12} sm={12} md={6} lg={4} xl={3}>
-            <Button icon={<PrinterTwoTone />} block style={{ width: "100%" }}></Button>
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={5} xl={4}>
-            <DatePicker
-              value={selectedDate}
-              onChange={(date) => setSelectedDate(date || dayjs())}
-              format="DD/MM/YYYY"
-              placeholder="Chọn ngày"
-              style={{ width: "100%" }}
-            />
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={5} xl={4}>
-            <Select
-              placeholder="Lọc theo vai trò"
-              style={{ width: "100%" }}
-              allowClear
-              value={selectedRole}
-              onChange={handleFilterChange}
-            >
-              <Option value={USER_ROLE.DOCTOR}>Bác sĩ</Option>
-              <Option value={USER_ROLE.STAFF}>Kỹ thuật viên</Option>
-            </Select>
-          </Col>
-          <Col xs={12} sm={12} md={6} lg={10} xl={13}>
-            <Select
-              placeholder="Lọc theo nhân viên"
-              style={{ width: "100%" }}
-              allowClear
-              value={selectedStaffId}
-              onChange={handleStaffChange}
-              showSearch
-              filterOption={(input, option) => {
-                const children = option?.children;
-                const value = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
-                return value.toLowerCase().includes(input.toLowerCase());
-              }}
-            >
-              {selectedRole === USER_ROLE.DOCTOR || !selectedRole
-                ? doctors.map((doctor: IStaff) => (
-                    <Option key={doctor._id} value={doctor._id}>
-                      {doctor.name}
-                    </Option>
-                  ))
-                : null}
-              {selectedRole === USER_ROLE.STAFF || !selectedRole
-                ? ktvs.map((ktv: IStaff) => (
-                    <Option key={ktv._id} value={ktv._id}>
-                      {ktv.name}
-                    </Option>
-                  ))
-                : null}
-            </Select>
-          </Col>
-        </Row>
+        <>
+          <style>{`
+            @media (min-width: 992px) {
+              .filter-container {
+                min-width: 600px;
+              }
+            }
+            @media (min-width: 1200px) {
+              .filter-container {
+                min-width: 700px;
+              }
+            }
+            @media (min-width: 1600px) {
+              .filter-container {
+                min-width: 800px;
+              }
+            }
+          `}</style>
+          <div className="filter-container" style={{ width: "100%" }}>
+            <Row gutter={[8, 8]} style={{ width: "100%" }}>
+              <Col xs={12} sm={12} md={6} lg={5} xl={4}>
+                <Button icon={<PrinterTwoTone />} block style={{ width: "100%" }}></Button>
+              </Col>
+              <Col xs={12} sm={12} md={7} lg={7} xl={6}>
+                <DatePicker
+                  value={selectedDate}
+                  onChange={(date) => setSelectedDate(date || dayjs())}
+                  format="DD/MM/YYYY"
+                  placeholder="Chọn ngày"
+                  style={{ width: "100%" }}
+                />
+              </Col>
+              <Col xs={12} sm={12} md={5} lg={5} xl={4}>
+                <Select
+                  placeholder="Lọc theo vai trò"
+                  style={{ width: "100%" }}
+                  allowClear
+                  value={selectedRole}
+                  onChange={handleFilterChange}
+                >
+                  <Option value={USER_ROLE.DOCTOR}>Bác sĩ</Option>
+                  <Option value={USER_ROLE.STAFF}>Kỹ thuật viên</Option>
+                </Select>
+              </Col>
+              <Col xs={12} sm={12} md={6} lg={7} xl={10}>
+                <Select
+                  placeholder="Lọc theo nhân viên"
+                  style={{ width: "100%" }}
+                  allowClear
+                  value={selectedStaffId}
+                  onChange={handleStaffChange}
+                  showSearch
+                  filterOption={(input, option) => {
+                    const children = option?.children;
+                    const value = typeof children === 'string' ? children : Array.isArray(children) ? children.join('') : '';
+                    return value.toLowerCase().includes(input.toLowerCase());
+                  }}
+                >
+                  {selectedRole === USER_ROLE.DOCTOR || !selectedRole
+                    ? doctors.map((doctor: IStaff) => (
+                        <Option key={doctor._id} value={doctor._id}>
+                          {doctor.name}
+                        </Option>
+                      ))
+                    : null}
+                  {selectedRole === USER_ROLE.STAFF || !selectedRole
+                    ? ktvs.map((ktv: IStaff) => (
+                        <Option key={ktv._id} value={ktv._id}>
+                          {ktv.name}
+                        </Option>
+                      ))
+                    : null}
+                </Select>
+              </Col>
+            </Row>
+          </div>
+        </>
       }
       style={{ minHeight: "90vh", margin: -10 }}
       styles={{

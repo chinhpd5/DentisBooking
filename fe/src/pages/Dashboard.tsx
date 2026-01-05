@@ -76,8 +76,6 @@ function Dashboard() {
       // Fetch all data in parallel
       const [bookingsResponse, customersResponse] = await Promise.all([
         getListBooking(
-          1, 
-          10000, 
           undefined, 
           undefined,
           undefined,

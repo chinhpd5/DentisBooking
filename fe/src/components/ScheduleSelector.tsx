@@ -300,7 +300,7 @@ const ScheduleSelector: React.FC<ScheduleSelectorProps> = ({
   const { data: bookingsData } = useQuery({
     queryKey: ["bookings", fromDate, toDate],
     queryFn: () =>
-      getListBooking(1, 1000, undefined, undefined, undefined, undefined, fromDate, toDate),
+      getListBooking(undefined, undefined, undefined, undefined, fromDate, toDate),
     enabled: open && !!selectedDate,
   });
 
