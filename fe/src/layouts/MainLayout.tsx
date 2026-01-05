@@ -214,12 +214,13 @@ function MainLayout() {
       // Admin có tất cả quyền
       return allMenuItems;
     } else if (userRole === USER_ROLE.RECEPTIONIST) {
-      // Receptionist: Trang chủ, Quản lý đặt lịch (full), xem bác sỹ/KTV, xem thủ thuật, xem công việc ktv, xem ghế, Quản lý khách hàng (full)
+      // Receptionist: Trang chủ, Quản lý đặt lịch (full - bao gồm: danh sách, lịch bác sĩ, thêm mới), xem bác sỹ/KTV, xem thủ thuật, xem công việc ktv, xem ghế, Quản lý khách hàng (full)
       const filteredItems: MenuItem[] = [];
       
       allMenuItems.forEach((item) => {
         if (item && typeof item === "object" && "key" in item) {
           if (item.key === "home" || item.key === "booking" || item.key === "Customer") {
+            // booking menu bao gồm: booking-list, booking-doctor, booking-add - tất cả đều có thể xem bởi receptionist
             filteredItems.push(item);
           } else if (item.key === "staff" && "children" in item && item.children) {
             // Chỉ xem danh sách -> hiển thị trực tiếp không có menu con
