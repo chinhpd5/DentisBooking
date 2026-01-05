@@ -68,6 +68,10 @@ const bookingSchema = new mongoose.Schema({
     default: "",
     trim: true,
   },
+  KS: {
+    type: Boolean,
+    default: false,
+  },
   staffAssignments: {
     type: [{
       type: mongoose.Schema.Types.ObjectId,

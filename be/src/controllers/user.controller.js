@@ -7,7 +7,7 @@ export const register = async (req, res) => {
   try {
     const { name, username, password, role } = req.body;
 
-    const existingUser = await User.findOne({ username });
+    const existingUser = await User.findOne({ username, isDeleted: IS_DELETED.NO });
     if (existingUser) {
       return res.status(400).json({
         success: false,

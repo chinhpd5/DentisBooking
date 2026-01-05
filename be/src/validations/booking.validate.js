@@ -29,6 +29,7 @@ export const createBookingSchema = Joi.object({
   }),
   status: Joi.string().valid(...Object.values(BOOKING_STATUS)).optional(),
   isDeleted: Joi.number().valid(...Object.values(IS_DELETED)).optional(),
+  KS: Joi.boolean().optional(),
   staffAssignments: Joi.array().items(Joi.object({
     staffId: objectId.required(),
     serviceIds: Joi.array().items(objectId).optional(),
@@ -52,6 +53,7 @@ export const updateBookingSchema = createBookingSchema.fork(
     "serviceId",
     "status",
     "isDeleted",
+    "KS",
     "staffAssignments",
   ],
   (schema) => schema.optional()
