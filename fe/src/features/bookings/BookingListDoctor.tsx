@@ -412,19 +412,41 @@ function BookingList() {
     return statusMap[status] || status;
   }, []);
 
-  // Tạo danh sách các khung giờ 30 phút từ 8h đến 22h
+  const getDaySchedule = useCallback((staff: IStaff, dayOfWeek: number) => {
+    switch (dayOfWeek) {
+      case 1: return staff.scheduleMonday;
+      case 2: return staff.scheduleTuesday;
+      case 3: return staff.scheduleWednesday;
+      case 4: return staff.scheduleThursday;
+      case 5: return staff.scheduleFriday;
+      case 6: return staff.scheduleSaturday;
+      case 0: return staff.scheduleSunday;
+      default: return undefined;
+    }
+  }, []);
+
+  // Tạo danh sách các khung giờ 30 phút theo giờ làm việc của bác sĩ theo thứ (giờ nghỉ sẽ không hiển thị)
   const timeSlots = useMemo(() => {
     const slots: Array<{ start: Dayjs; end: Dayjs; label: string }> = [];
-    const startHour = 8;
-    const endHour = 22;
-    
-    if (!filter.fromDate || !filter.doctorId) return slots;
-    
+
+    if (!filter.fromDate || !filter.doctorId || !doctorList) return slots;
+
     const selectedDate = dayjs(filter.fromDate);
-    
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const start = selectedDate.hour(hour).minute(minute).second(0).millisecond(0);
+
+    const doctor = doctorList.find((d) => d._id === filter.doctorId);
+    if (!doctor) return slots;
+
+    const dayOfWeek = selectedDate.day();
+    const daySchedule = getDaySchedule(doctor, dayOfWeek);
+    if (!daySchedule) return slots;
+
+    const base = selectedDate.startOf('day');
+    const shifts = [daySchedule.morning, daySchedule.afternoon].filter(Boolean) as Array<{ start: number; end: number }>;
+
+    for (const shift of shifts) {
+      if (shift.end <= shift.start) continue;
+      for (let startMin = shift.start; startMin + 30 <= shift.end; startMin += 30) {
+        const start = base.add(startMin, 'minute').second(0).millisecond(0);
         const end = start.add(30, 'minute');
         slots.push({
           start,
@@ -435,7 +457,7 @@ function BookingList() {
     }
     
     return slots;
-  }, [filter.fromDate, filter.doctorId]);
+  }, [filter.fromDate, filter.doctorId, doctorList, getDaySchedule]);
 
   // Nhóm lịch hẹn theo khung giờ
   const bookingsByTimeSlot = useMemo(() => {
@@ -810,14 +832,14 @@ function BookingList() {
         if (!record.booking) return "-";
         return (
           <Space size="middle">
-            <Link to={`detail/${record.booking._id}`}>
+            <Link to={`/booking/detail/${record.booking._id}`}>
               <Button
                 color="blue"
                 variant="solid"
                 icon={<EyeOutlined />}
               ></Button>
             </Link>
-            <Link to={`edit/${record.booking._id}`}>
+            <Link to={`/booking/edit/${record.booking._id}`}>
               <Button
                 color="orange"
                 variant="solid"
@@ -989,14 +1011,14 @@ function BookingList() {
       key: "actions",
       render: (_: IBooking, item: IBooking) => (
         <Space size="middle">
-          <Link to={`detail/${item._id}`}>
+          <Link to={`/booking/detail/${item._id}`}>
             <Button
               color="blue"
               variant="solid"
               icon={<EyeOutlined />}
             ></Button>
           </Link>
-          <Link to={`edit/${item._id}`}>
+          <Link to={`/booking/edit/${item._id}`}>
             <Button
               color="orange"
               variant="solid"
